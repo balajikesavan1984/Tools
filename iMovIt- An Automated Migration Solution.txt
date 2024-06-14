@@ -1,0 +1,2074 @@
+Public sURL As String
+Public sUserName As String
+Public sPassword As String
+Public Project As String
+Public Domain As String
+Public TestCaseFilePath As String
+Public DownloadFolder As String
+Public TestPlanFolderPath
+'Public sUserName As String
+'Public sPassword As String
+'Public Project As String
+'Public Domain As String
+'Public URL As String
+'Public Env As String
+Public MyFolder As String
+Public strScenarioParam
+Public TestCaseType
+Public BDDwb As Workbook
+Public BDDws As Worksheet
+Public strTestcaseCount
+Public objFSO As FileSystemObject
+Public Stream As TextStream
+ 'Public TestIdLastRow
+Public FeatureExtn
+Public FeatureFilePath
+Public StrFilePath
+Public ArrUnique As Variant
+Public TestType As String
+Public BDDFilePath
+Public QCPath
+Public TestLabFolderPath
+Public Ts1
+'Public Tsf As testSetFactory
+'Public Tset As TestSet
+'Public TestSetName As TestSet
+'Public TestInLab, TestList
+'Public test As TSTest
+
+
+'Public QCConnection As New TDAPIOLELib.TDConnection
+Public Sub Set_Values()
+    sURL = UserForm1.TextBox1.Value
+    sUserName = UserForm1.TextBox2.Value
+    sPassword = UserForm1.TextBox3.Value
+    Project = UserForm1.uProject.Value
+    Domain = UserForm1.TextBox5.Value
+End Sub
+Public Function ALMConnectionCredentials() As Variant
+    QCConnection.InitConnectionEx sURL
+    QCConnection.Login sUserName, sPassword
+    Dim aray(2) As Variant
+    Set aray(0) = QCConnection
+    aray(1) = QCConnection.LoggedIn
+    ALMConnectionCredentials = aray
+End Function
+
+Private Sub Connect_Click()
+Domain = UserForm1.uDomain.Value
+Project = UserForm1.uProject.Value
+QCConnection.Connect Domain, Project
+Label17.Caption = "Connected to Project:" & Project
+Label17.ForeColor = RGB(0, 176, 80)
+Label15.Caption = " "
+Connect.Enabled = False
+End Sub
+
+Private Sub Convert_Click()
+    If OptionButton2.Value = True Then
+        If TextBox5 = "" Then
+            Label15.Caption = "Please Select Test Case File Path"
+        ElseIf TextBox6.Value = "" Then
+            Label15.Caption = "Please Select a File Location to Save Feature File"
+        Else
+            Dim BDDwb As Workbook
+            Dim BDDws As Worksheet
+            'Dim BDDFilePath
+            BDDFilePath = TextBox5.Value
+            Set BDDwb = Workbooks.Open(BDDFilePath)
+            Set BDDws = BDDwb.Sheets(1)
+            Application.DisplayAlerts = False
+            'Application.ScreenUpdating = False
+            'ActiveWindow.Visible = True
+            'Dim ArrUnique As Variant
+            'Dim TestType As String
+            ArrUnique = WorksheetFunction.Unique(Columns(13))
+            If UserInput.Value = "BDD-RAFT Automation" Then
+                For UniqVal = 2 To UBound(ArrUnique) 'Newly added for loop to go thru list of unique values in a column TestType ArrUnique (UniqVal, 1) 'Get the unique columns value
+                'Call ConvertToBDD(TestType)
+                Next
+                BDDwb.Close SaveChanges:=False
+                Label25.Caption = strTestcaseCount & " " & "Test Cases Converted to Feature file"
+                Labe125.ForeColor RGB(0, 176, 80)
+                Label25.Font.Bold = True
+            Else
+                Application.DisplayAlerts = True
+                Application.ScreenUpdating = False
+                ActiveWindow.Visible = True
+                Call BDDManual 'Calling manual BDD conversion
+            End If
+        End If
+     ElseIf OptionButton1.Value = True Then
+            Application.DisplayAlerts = False
+            Application.ScreenUpdating = False
+            ActiveWindow.Visible = True
+            If UserInput.Value = "" Then
+                Label15.Caption = "Please Select options"
+            ElseIf Login.Enabled = True Then
+                Label15.Caption = "Please log into MLQC and connect to the project"
+            ElseIf uDomain.Value = "" Then
+                Label15.Caption = "Please Connect to the project in MLQC"
+            ElseIf uenv.Value = "" Then
+                Label15.Caption = "Please Connect to the project in MLQC"
+            ElseIf Connect.Enabled = True Then
+                Label15.Caption = "Please Connect to the project in MLQC"
+            ElseIf TextBox7.Value = "" Then
+                Label15.Caption = "Please enter MLQC test plan folder path"
+            ElseIf TextBox6.Value = "" Then
+                Labe115.Caption = "Please Select a File Location to Save Feature File"
+            Else
+                Application.DisplayAlerts = False
+                Application.ScreenUpdating = False
+                ActiveWindow.Visible = True
+                QCPath = UserForm1.TextBox7.Value
+                Call ExportTestCases(QCPath)
+                'Convert to BDD
+                BDDFilePath = StrFilePath '-Storing string file path value in bddfilepath to pass file name to manual bdd
+                Set BDDwb = Workbooks.Open(StrFilePath)
+                Set BDDws = BDDwb.Sheets(1)
+                'Dim ArrUnique As Variant
+                'Dim TestType As String
+                ArrUnique = WorksheetFunction.Unique(Columns(13))
+                Application.DisplayAlerts = False
+                Application.ScreenUpdating = False
+                ActiveWindow.Visible = True
+                If UserInput.Value = "BDD-RAFT Automation" Then
+                    For UniqVal = 2 To UBound(ArrUnique) 'Newly added for loop to go thru list of unique values in a column
+                        TestType = ArrUnique(UniqVal, 1)  'Get the unique columns value
+                        'Call ConvertToBDD(TestType)
+                    Next
+                    BDDwb.Close SaveChanges:=False
+                    Label25.Caption = strTestcaseCount & "" & "Test Cases Converted to Feature file"
+                    Label25.ForeColor = RGB(0, 176, 80)
+                    Labe125.Font.Bold = True
+                Else
+                    Call BDDManual 'Calling manual BDD conversion
+                End If
+            End If
+            'If TextBox6.Value = "" Then
+            'Label35.Caption = "Please Select a File Location to Save Feature File"
+            'Else
+            'Application.DisplayAlerts = False
+            'Application.ScreenUpdating = False
+            'ActiveWindow.Visible = True
+            'Dim BDDFilePath
+            'BDDFilePath = TextBox5.Value
+            'Set BDDwb= Workbooks.Open(StrFilePath)
+            'Set BDDws = BDDwb.Sheets(1)
+            'Dim ArrUnique As Variant
+            'Dim TestType As String
+            'ArrUnique = WorksheetFunction. Unique (Columns (13))
+            'For UniqVal = 2 To UBound(ArrUnique) 'Newly added for loop to go thru list of unique values in a column
+            'TestType = ArrUnique (UniqVal, 1) Get the unique columns value
+            'Call ConvertToBDD (TestType)
+            'Next
+            'BDDwb.Close SaveChanges:=False
+            'Label24. ForeColor = RGB(0, 176, 80)
+            'Label24.Caption = strTestcaseCount & "" & "Test Cases Converted to Feature file"
+            'Label24.Font.Bold = True
+             'Call ConvertToBDD
+            'End If
+     Else
+     Label15.Caption = "Please Select one of the options to convert test cases to BDD format"
+    End If
+End Sub
+
+Private Sub uDomain_Change()
+If QCConnection.Connected Then
+    UserForm1.uProject.Clear
+    For Each Proj In QCConnection.VisibleProjects(UserForm1.uDomain.Value)
+        UserForm1.uProject.AddItem (Proj)
+    Next
+End If
+End Sub
+
+Private Sub uProject_Change()
+If uProject.Value <> "" Then
+    Connect.Enabled = True
+End If
+End Sub
+
+Private Sub UserInput_Change()
+    If UserForm1.UserInput.Value = "Export Test Cases" Then
+        Frame3.Visible = True
+        OptionButton1.Visible = False
+        OptionButton2.Visible = False
+        Frame3.Top = 48
+        Frame4.Visible = False 'BDD manual test case frame
+        Export.Visible = True 'Export test cases button
+        Convert.Visible = False 'Convert to BDD button
+        Export.Enabled = True
+        Label9.Visible = False
+    ElseIf UserForm1.UserInput.Value = "BDD-Manual Test Case" Then
+        Frame3.Visible = False 'Export test cases section
+        OptionButton1.Visible = True 'Convert from ALM radio button
+        OptionButton2.Visible = True 'convert from local drive
+        Frame4.Top = 88 'Convert to BDD frame
+        Frame4.Left = 345
+        Label11.Visible = False ' File path in convert to bdd section
+        TextBox5.Visible = False ' File path text in convert to bdd section
+        CommandButton7.Visible = False 'Browse button in convert to bdd section
+        OptionButton1.Value = True ' Selecting convert from ALM as default option when BDD-Manual selected
+        Label13.Top = 15 ' ALM Path Label
+        TextBox7.Top = 12 'ALM Path Text Box
+        Frame4.Visible = True 'Convert to BDD frame
+        Export.Visible = False  'Export test cases button
+        Convert.Visible = True 'Convert to BDD button
+        Convert.Top = 204
+        Convert.Left = 246
+        Export.Enabled = False
+        Label24.Visible = False
+        Label13.Visible = True
+    Else
+        Frame3.Visible = False
+        OptionButton1.Visible = False
+        OptionButton2.Visible = False
+        Frame4.Visible = False
+        Export.Visible = True 'Export test cases
+        Convert.Visible = False 'Convert to BDD
+        Export.Enabled = False
+    End If
+End Sub
+
+Private Sub CommandButton1_Click()
+
+End Sub
+
+Private Sub CommandButton5_Click()
+ UserForm1.UserInput.ListIndex = 0
+ ALMFolderPath.Value = ""
+ Label10.Caption = ""
+ TextBox5.Value = ""
+ TextBox6.Value = ""
+ TextBox7.Value = ""
+ Label15.Caption = ""
+End Sub
+
+Private Sub CommandButton6_Click()
+Unload Me
+End Sub
+
+Private Sub CommandButton7_Click()
+Dim Filepicker As FileDialog
+'Dim MyFile As String
+Set Filepicker = Application.FileDialog(msoFileDialogFilePicker)
+With Filepicker
+.Title = "Select a File Location"
+.AllowMultiSelect = False
+If .Show <> -1 Then
+Label15.Caption = "Your action is Cancelled"
+Else
+    TestCaseFilePath = .SelectedItems(1)
+End If
+End With
+TextBox5.Value = TestCaseFilePath
+End Sub
+
+Private Sub CommandButton8_Click()
+Dim FldrPicker As FileDialog
+'Dim MyFolder As String
+Set FldrPicker = Application.FileDialog(msoFileDialogFolderPicker)
+With FldrPicker
+    .Title = "Select a Folder Location"
+    .AllowMultiSelect = False
+    If .Show <> -1 Then
+        Label15.Caption = "Your action is Cancelled"
+    Else
+        DownloadFolder = .SelectedItems(1) & "\"
+    End If
+End With
+TextBox6.Value = DownloadFolder
+End Sub
+
+Private Sub Export_Click()
+Export.Enabled = True
+If UserInput.Value = "" Then
+    Label15.Caption = "Please select one of the options from drop down"
+ElseIf ALMFolderPath.Value = "" Then
+    Label15.Caption = "Please enter ALM folder path"
+ElseIf Login.Enabled = True Then
+    Label15.Caption = "Please log into ALM and connect to the project"
+Else
+    Application.DisplayAlerts = False
+    Application.ScreenUpdating = False
+    ActiveWindow.Visible = True
+    TestPlanFolderPath = UserForm1.ALMFolderPath.Value
+    Call ExportTestCases(TestPlanFolderPath)
+End If
+End Sub
+
+Private Sub Login_Click()
+Set_Values
+Dim aray As Variant
+Dim var1 As String
+Dim var2 As String
+If TextBox2.Value = "" Then
+    Label15.Caption = "Please enter User Name"
+    Label15.ForeColor = RGB(192, 0, 0)
+    Label15.Font.Bold = True
+ElseIf TextBox3.Value = "" Then
+    Label15.Caption = "Please enter Password"
+    Label15.ForeColor = RGB(192, 0, 0)
+    Label15.Font.Bold = True
+Else
+    aray = ALMConnectionCredentials()
+    Set QCConnection = aray(0)
+    If (aray(1) <> True) Then
+        Label15.Caption = Err.Description
+        GoTo ErrorHandler
+        Label16.Caption = "Login UnSuccessful"
+        Label16.ForeColor = RGB(192, 0, 0)
+        Label16.Font.Bold = True
+        End
+    Else
+        For Each Domin In QCConnection.VisibleDomains
+            UserForm1.uDomain.AddItem (Domin)
+        Next
+        On Error GoTo ErrorHandler
+        Login.Enabled = False
+        Label16.Caption = "Logged into ALM Successfully!"
+        Label16.ForeColor = RGB(0, 176, 80)
+        Label15.Caption = " "
+        TextBox2.Locked = True
+        TextBox3.Locked = True
+    End If
+Done:
+    Exit Sub
+ErrorHandler:
+    Label15.Caption = "Try login with correct project and domain you have access"
+    Label15.ForeColor = RGB(192, 0, 0)
+    Label15.Font.Bold = True
+End If
+End Sub
+
+Private Sub Logout_Click()
+If Login.Enabled = True Then
+    Label15.Caption = "Oops! You have not logged into ALM yet. Please click on " & Chr(34) & "Close" & Chr(34) & _
+    " button to exit the utility"
+    Label15.ForeColor = RGB(192, 0, 0)
+    Label15.Font.Bold = True
+Else
+    QCConnection.Disconnect
+    QCConnection.Logout
+    QCConnection.ReleaseConnection
+    Label15.Caption = "Logged out Successfully"
+    Label15.ForeColor = RGB(0, 176, 80)
+    Login.Enabled = True
+    Connect.Enabled = False
+End If
+End Sub
+
+Private Sub OptionButton1_Click()
+Label13.Visible = True
+TextBox7.Visible = True
+Label13.Top = 15 ' ALM Path Label
+TextBox7.Top = 12 'ALM Path Text Box
+Label11.Visible = False
+TextBox5.Visible = False
+CommandButton7.Visible = False
+Convert.Visible = True 'Convert to BDD button
+Convert.Top = 204
+Convert.Left = 246
+End Sub
+
+Private Sub OptionButton2_Click()
+Label13.Visible = False
+TextBox7.Visible = False
+Label11.Visible = True
+TextBox5.Visible = True
+CommandButton7.Visible = True
+Label11.Top = 15 ' ALM Path Label
+TextBox5.Top = 12 'ALM Path Text Box
+CommandButton7.Top = 12
+Convert.Visible = True 'Convert to BDD button
+Convert.Top = 204
+Convert.Left = 246
+Label24.Visible = False
+Label13.Visible = False
+Label11.Visible = True
+End Sub
+
+Private Sub UserForm_Initialize()
+    UserForm1.Height = 276
+    'Adding items to the user input box
+    UserForm1.UserInput.AddItem "---Select---"
+    UserForm1.UserInput.AddItem "Export Test Cases"
+    UserForm1.UserInput.AddItem "BDD-Manual Test Case"
+    UserForm1.UserInput.ListIndex = 0
+    Export.Enabled = False
+    Connect.Enabled = False
+End Sub
+
+Public Sub ExportTestCases(ALMPath)
+Dim TestPlanPath As String
+TestPlanPath = Trim(ALMPath)
+Dim rFact As ReqFactory
+Dim myReqList As List
+Dim aTest As TDAPIOLELib.test, coverList As List
+Dim aReq As Req
+Dim aField As TDField, fieldList As List
+Dim CustField As CustomizationField
+Dim i As Integer
+Dim i As Integer
+Dim Excel As Workbook
+i = 1
+'TDC is the global TDconnection object
+Set tdc = UserForm1.QCConnection
+Set Excel = Workbooks.Add 'CreateObject("Excel.Application")
+Set objSheet = ActiveSheet 'ActiveWorkbook.Worksheets("TestCaseDetails")
+objSheet.Name = "TestCase Details"
+objSheet.UsedRange.Delete
+'Fill the header
+objSheet.Cells(1, 1).Value = "Test ID"
+objSheet.Cells(1, 2).Value = "Test Name"
+objSheet.Cells(1, 3).Value = "Test Description"
+objSheet.Cells(1, 4).Value = "Test Type"
+objSheet.Cells(1, 5).Value = "Designer"
+objSheet.Cells(1, 6).Value = "Creation Date"
+objSheet.Cells(1, 7).Value = "Test Priority"
+objSheet.Cells(1, 8).Value = "Execution Status"
+objSheet.Cells(1, 9).Value = "Subject"
+objSheet.Cells(1, 10).Value = "Path"
+objSheet.Cells(1, 11).Value = "Test Type"
+objSheet.Cells(1, 12).Value = "Tree Path"
+objSheet.Cells(1, 13).Value = "Tech Feature ID"
+objSheet.Cells(1, 14).Value = "Step Name"
+objSheet.Cells(1, 15).Value = "Step Description"
+objSheet.Cells(1, 16).Value = "Expected Result"
+objSheet.Cells(1, 17).Value = "Component"
+objSheet.Cells(1, 18).Value = "Sub Component"
+objSheet.Cells(1, 19).Value = "Automation Status"
+objSheet.Cells(1, 20).Value = "Application Name"
+objSheet.Cells(1, 21).Value = "Primary Contact"
+objSheet.Cells(1, 22).Value = "Primary Contact Phone"
+objSheet.Cells(1, 23).Value = "Secondary Contact"
+objSheet.Cells(1, 24).Value = "Secondary Contact Phone"
+'Get the Requirement Factory
+Set rFact = tdc.ReqFactory
+'Get the Test Factory
+Set tFact = tdc.TestFactory
+'To get all sub folders
+folderNamesList = GetNodesList(TestPlanPath)
+iRowCountAfter = 0
+'Iterate through all Sub Folders
+For Each FolderName In folderNamesList
+    'Getting TestCases from a tree
+    Set QCTreeManager = tdc.TreeManager
+    Set TestNode = QCTreeManager.NodeByPath(FolderName)
+    'Set TestFact = TestNode. TestFactory
+    Set TestFact = TestNode.TestFactory
+    Set myTestList = TestFact.NewList("")
+    cnt = cnt + myTestList.Count
+    'Iterating through all Tests and getting Test ID through Test Name
+    For Each aTest In myTestList
+        iRowCountBefore = i + 1
+        'Fields to be filled
+        objSheet.Cells(i + 1, 1).Value = aTest.Field("TS_TEST_ID")
+        objSheet.Cells(i + 1, 2).Value = aTest.Field("TS_NAME")
+        objSheet.Cells(i + 1, 3).Value = Trim(Replace(Replace(Replace(Replace(Trim(StripHTML(Replace(aTest.Field("TS_DESCRIPTION"), "<br>", Chr(10)))), "&quot;", Chr(34)), "&lt;", "<"), "&gt;", ">"), "&amp;", "&"))
+        objSheet.Cells(i + 1, 4).Value = aTest.Field("TS_TYPE")
+        objSheet.Cells(i + 1, 5).Value = aTest.Field("TS RESPONSIBLE")
+        objSheet.Cells(i + 1, 6).Value = aTest.Field("TS_CREATION_DATE")
+        objSheet.Cells(i + 1, 7).Value = aTest.Field("TS_USER_21")
+        objSheet.Cells(i + 1, 8).Value = aTest.Field("TS_BPTA_CHANGE_DETECTED")
+        objSheet.Cells(i + 1, 9).Value = aTest.Field("TS_EXEC_STATUS")
+        objSheet.Cells(i + 1, 10).Value = aTest.Field("TS SUBJECT")
+        objSheet.Cells(i + 1, 11).Value = aTest.Field("TS_TYPE")
+        objSheet.Cells(i + 1, 12).Value = aTest.Field("TS_TREE_PATH")
+        objSheet.Cells(i + 1, 13).Value = aTest.Field("TS_USER_59") ' Tech feature id
+        objSheet.Cells(i + 1, 17).Value = aTest.Field("TS_USER_03") '"Component
+        objSheet.Cells(i + 1, 18).Value = aTest.Field("TS_USER_06") 'Sub Component
+        objSheet.Cells(i + 1, 19).Value = aTest.Field("TS_USER_38") 'Automation status
+        objSheet.Cells(i + 1, 20).Value = aTest.Field("TS_USER_17") 'Application Name
+        objSheet.Cells(i + 1, 21).Value = aTest.Field("TS_USER_22") 'Primary Contact
+        objSheet.Cells(i + 1, 22).Value = aTest.Field("TS_USER_23") 'Primary Contact Phone
+        objSheet.Cells(i + 1, 23).Value = aTest.Field("TS_USER_24") '"Secondary Contact
+        objSheet.Cells(i + 1, 24).Value = aTest.Field("TS_USER_25") 'Secondary Contact Phone
+        'To Get Design Steps
+        Set designStepFact = aTest.DesignStepFactory
+        Set steplist = designStepFact.NewList("")
+        j = i + 1
+        Dim StepCount As Integer
+        StepCount steplist.Count
+        For Each bstep In steplist
+            objSheet.Cells(j, 14).Value = bstep.Field("DS_STEP_NAME")
+            objSheet.Cells(j, 15).Value = Trim(Replace(Replace(Replace(Replace(Trim(StripHTML(Replace(bstep.Field("DS_DESCRIPTION"), "<br>", Chr(10)))), "&quot;", Chr(34)), "&lt;", "<"), "&gt;", ">"), "&amp;", "&"))
+            objSheet.Cells(j, 15).Value = Trim(Replace(Replace(Replace(Replace(Trim(StripHTML(Replace(bstep.Field("DS_EXPECTED"), "<br>", Chr(10)))), "&quot;", Chr(34)), "&lt;", "<"), "&gt;", ">"), "&amp;", "&"))
+            'StripHTML (Replace(bStep.Field("DS EXPECTED"), "<br>", Chr(10)))
+            j = j + 1
+        Next
+        i = j - 1
+        iRowCountAfter = objSheet.UsedRange.Rows.Count
+        objSheet.Range("A" & CStr(iRowCountBefore), "A" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("B" & CStr(iRowCountBefore), "B" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("C" & CStr(iRowCountBefore), "C" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("D" & CStr(iRowCountBefore), "D" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("E" & CStr(iRowCountBefore), "E" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("F" & CStr(iRowCountBefore), "F" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("G" & CStr(iRowCountBefore), "G" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("H" & CStr(iRowCountBefore), "H" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("I" & CStr(iRowCountBefore), "I" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("J" & CStr(iRowCountBefore), "J" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("K" & CStr(iRowCountBefore), "K" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("L" & CStr(iRowCountBefore), "L" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("M" & CStr(iRowCountBefore), "M" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("Q" & CStr(iRowCountBefore), "Q" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("R" & CStr(iRowCountBefore), "R" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("S" & CStr(iRowCountBefore), "s" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("T" & CStr(iRowCountBefore), "T" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("U" & CStr(iRowCountBefore), "U" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("V" & CStr(iRowCountBefore), "V" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("W" & CStr(iRowCountBefore), "W" & CStr(iRowCountAfter)).Merge
+        objSheet.Range("x" & CStr(iRowCountBefore), "x" & CStr(iRowCountAfter)).Merge
+    Next
+    Set rfilter = Nothing
+    Set tfilter = Nothing
+Next
+If Not objSheet.AutoFilterMode Then
+    objSheet.Range("A1").AutoFilter
+End If
+'Excel.ActiveWindow.freezepanes
+Dim Str, Str1, Str2, TimeStamp
+arrStr = Split(Now(), "PM")
+Str1 = Replace(arrStr(0), "/", "")
+Str2 = Replace(Str1, ":", "")
+TimeStamp = Replace(Str2, " ", " ")
+Strextn = ".xlsx"
+StrFileName = "Exported Test Cases" & TimeStamp & Strextn
+strUserName = Environ("USERNAME")
+StrFilePath -"C:\Users\" & strUserName & "\Documents\" & StrFileName
+Label9.Visible = True
+UserForm1.Labe110.Caption = StrFilePath
+'StrFilepath FolderPath. Value & StrFileName
+ActiveWorkbook.SaveAs StrFilePath 'FolderPath.Value & "Exported Test Cases TimeStamp & ".xlsx"
+Workbooks(StrFileName).Close
+'MsgBox cnt && "Test Cases are Exported"
+'Label24.Caption = cnt &" "& "Test Cases are Exported"
+'Label24.ForeColor = RGB(0, 176, 0)
+'Label24. Font Bold = True
+Application.DisplayAlerts = True
+Application.ScreenUpdating = True
+End Sub
+
+Public Function GetNodesList(ByVal RootNode)
+    'Specify Array to contain all nodes of subject tree
+    Dim arrStrNodesList()
+    ReDim Preserve arrStrNodesList(0)
+    arrStrNodesList(0) = RootNode
+    Set tdc = UserForm1.QCConnection
+    Dim objTreeManager, objSubjectNode
+    Set objTreeManager = tdc.TreeManager
+    Set objSubjectNode = objTreeManager.NodeByPath(RootNode)
+    'Run on all children nodes
+    Dim i, intNewUpper
+    For i = 1 To objSubjectNode.Count
+        'If current node has  child then get path on child nodes too
+        If objSubjectNode.Child(i).Count >= 1 Then
+            Dim arrStrTempNodeList
+            arrStrTempNodeList = GetNodeList(objSubjectNode.Child(i).Path)
+            Dim strNode
+            For Each strNode In arrStrTempNodeList
+                'Add more space to dynamic array
+                intNewUpper = UBound(arrStrNodesList) + 1
+                ReDim Preserve arrStrNodesList(intNewUpper)
+                'Add strNode path to array
+                arrStrNodesList(intNewUpper) = strNode
+            Next
+        Else
+            'Add more space to dynamic array
+            intNewUpper = UBound(arrStrNodesList) + 1
+            ReDim Preserve arrStrNodesList(intNewUpper)
+            arrStrNodesList(intNewUpper) = objSubjectNode.Child(i).Path
+        End If
+    Next
+    'Clean up object
+    Set objSubjectNode = Nothing
+    Set objTreeManager = Nothing
+    GetNodesList = arrStrNodesList
+End Function
+
+Public Function StripHTML(sInputHTML As String) As String
+    Dim RegEx As Object
+    Set RegEx = CreateObject("vbscript.regexp")
+    Dim sInput As String
+    Dim sOut As String
+    sInput = sInputHTML
+        With RegEx
+            .Global = True
+            .IgnoreCase = True
+            .MultiLine = True
+            .Pattern = "<[^>]+>" ' Regular expression for HTML Tags
+        End With
+    sOut = RegEx.Replace(sInput, "")
+    StripHTML = sOut
+    Set RegEx = Nothing
+End Function
+
+Public Sub BDDManual()
+Dim BDDwb As Workbook
+'Dim BDDFilePath: BDDFilePath = TextBox5.Value
+Set BDDwb = Workbooks.Open(BDDFilePath)
+Dim TestIdLastRow
+Dim BDDws As Worksheet
+Dim objFSO As New FileSystemObject
+Set objFSO = New FileSystemObject
+Dim Stream As TextStream
+Dim FeatureExtn: FeatureExtn = ".feature"
+Dim FeatureFilePath, TestName
+Set BDDws = BDDwb.Sheets(1)
+TestIdLastRow = BDDws.Cells(BDDws.Rows.Count, "A").End(xlUp).Row
+Dim strTestcaseCount: strTestcaseCount = WorksheetFunction.Count(Range("A2:A" & TestIdLastRow))
+Dim StepCount: StepCount = 1
+Dim objRegExp As New RegExp
+For iRowCount = 2 To TestIdLastRow
+'Replacing dot in the test name
+If Right(BDDws.Cells(iRowCount, 2).Value, 1) = "." Then
+    TestName = Replace(BDDws.Cells(iRowCount, 2).Value, Right(BDDws.Cells(iRowCount, 2), 1), "")
+Else
+    TestName = BDDws.Cells(iRowCount, 2).Value
+End If
+'Forming file path
+FeatureFilePath = TextBox6.Value & Left(TestName, 100) & "_" & iRowCount - 1 & FeatureExtn
+'Creating feature file
+Set Stream = objFSO.CreateTextFile(FeatureFilePath, True)
+'Getting merged rows count
+MergeRowCount = BDDws.Cells(iRowCount, 1).MergeArea.Rows.Count
+Dim strTag
+For StepCount = 1 To MergeRowCount
+If StepCount = 1 Then
+    'Forming Feature Gherkin Keyword/Using folder name as background
+    Stream.WriteLine "Feature:" & " " & BDDws.Cells(iRowCount, 10).Value
+    
+    'Forming Cucumber Tags/Using tech feature field as tags
+    strTag = " "
+    If BDDws.Cells(iRowCount, 13).Value <> "" Then
+        arrTag = Split(BDDws.Cells(iRowCount, 13).Value, ",")
+        For Tagname = 8 To UBound(arrTag)
+            If Tagname = UBound(arrTag) Then
+                striag = strTag & "@" & arrTag(Tagname)
+                Else
+                strTag = strTag & "@" & arrTag(Tagname) & ","
+            End If
+        Next
+        Stream.WriteLine Trim(strTag)
+        Else
+        strTag = "@" & "Functional"
+        Stream.WriteLine Trim(strTag)
+    End If
+    
+    'Forming BackGround Gherkin keywords/ Test folder name
+    Stream.WriteLine "Background:" & " " & BDDws.Cells(iRowCount, 10).Value
+     'Forming Scenario Gherkin keyword/ Test Description
+    Stream.WriteLine "Scenario:" & " " & BDDws.Cells(iRowCount, 3).Value
+    'Forming scenario description/Test id used as test scenario description
+    Stream.WriteLine vbTab & "Test ID:" & " " & BDDws.Cells(iRowCount, 1).Value
+    'Forming Scenario outline
+    strPattern = "(User|Login|Client)"
+    With objRegExp
+        .Global = True
+        .MultiLine = True
+        .IgnoreCase = True
+        .Pattern = strPattern
+    End With
+    If objRegExp.test(BDDws.Cells(iRowCount, 15).Value) Then
+        Set objParamName = objRegExp.Execute(BDDws.Cells(iRowCount, 15).Value)
+        strScenarioParam = "User"
+        Stream.WriteLine "Scenario Outline:" & " " & "<" & strScenarioParam & ">"
+    Else
+        Stream.WriteLine "Scenario Outline:"
+    End If
+    
+    If MergeRowCount = 1 Then
+        If objRegExp.test(BDDws.Cells(iRowCount, 15).Value) Then
+            Stream.WriteLine "Given" & " " & "User logged into application"
+            Else
+            Stream.WriteLine "Given" & " " & BDDws.Cells(iRowCount, 15).Value
+        End If
+        Stream.WriteLine "when" & " " & BDDws.Cells(iRowCount, 15).Value
+    'MsgBox "Expected Result:" &" " & BDDws.Cells(iRowCount, 16).Value
+    Stream.WriteLine "Then" & " " & BDDws.Cells(iRowCount, 16).Value
+    'Entering exampls keyword
+    
+        If strScenarioParam <> "" Then
+            'objRegExp. Test (BDDws.Cells(iRowCount, 15).Value) Then
+            Stream.WriteLine "Examples:" & " " & strScenarioParam
+            Stream.WriteLine "|" & strScenarioParam & "|"
+            Else
+            Stream.WriteLine "Examples:"
+        End If
+    Else
+        If objRegExp.test(BDDws.Cells(iRowCount, 15).Value) Then
+            'With objRegExp newly added code from here
+            'Global =True
+            '.Multiline = True
+            '.Ignore Case True
+            '.Pattern = " and"
+            'End With
+            strGivenAnd = Regularexp(" and ", BDDws.Cells(iRowCount, 15).Value)
+            If strGivenAnd = True Then
+                strFindAnd = Split(LCase(BDDws.Cells(iRowCount, 15).Value), " and ")
+                For intFindAnd = 0 To UBound(strFindAnd)
+                    If strFindAnd(intFindAnd) <> "" Then
+                        If intFindAnd = 0 Then
+                            Stream.WriteLine "Given" & " " & strFindAnd(intFindAnd)
+                        Else
+                            Stream.WriteLine "And" & " " & strFindAnd(intFindAnd)
+                        End If
+                    End If
+                Next
+            Else
+                Stream.WriteLine "Given" & " " & BDDws.Cells(iRowCount, 15).Value
+            End If
+        Else
+            Stream.WriteLine "Given" & "" & BDDws.Cells(iRowCount, 15).Value
+        End If
+        'MsgBox "Expected Result:" & " " & BDDws.Cells(iRowCount, 16).Value
+        
+        '-------------------When statement in Then code--------------------------------------------
+        Dim strWhenAnd, arrWhenAnd, strWhenSelect, arrwhenSelect, strwhenEnter, arrWhenEnter, WhenDotPos, strWhenMake, arrWhenMake
+        Dim strWhenClick, arrwhenClick, strWhenNavigate, strwhenLaunch
+        strWhenAnd = Regularexp(" and ", BDDws.Cells(iRowCount, 16).Value) 'newly added code
+        WhenDotPos = InStr(BDDws.Cells(iRowCount, 16).Value, ".")
+        strWhenSelect = Regularexp("select ", BDDws.Cells(iRowCount, 16).Value) 'newly added code
+        strwhenEnter = Regularexp("enter ", BDDws.Cells(iRowCount, 16).Value) 'newly added code
+        strWhenClick = Regularexp("click ", BDDws.Cells(iRowCount, 16).Value)
+        strWhenMake = Regularexp("make ", BDDws.Cells(iRowCount, 16).Value)
+        strWhenNavigate = Regularexp("navigate ", BDDws.Cells(iRowCount, 16).Value)
+        strwhenLaunch = Regularexp("launch ", BDDws.Cells(iRowCount, 16).Value)
+        'WhenDotPos = InStr(BDDws.Cells(iRowCount, 16).Value, ".")
+        WhenCommaPos = InStr(BDDws.Cells(iRowCount, 16).Value, ",")
+        If strWhenAnd = True Then
+            arrWhenAnd = Split(LCase(BDDws.Cells(iRowCount, 16).Value), " and ")
+            For intWhenAnd = 0 To UBound(arrWhenAnd)
+                If arrWhenAnd(intWhenAnd) <> "" Then
+                    If intWhenAnd = 0 Then
+                        Stream.WriteLine "when" & "" & arrWhenAnd(intWhenAnd)
+                    Else
+                        Dim strWhenAndState As String
+                        strWhenAndState = arrWhenAnd(intWhenAnd)
+                        WhenDotPos = InStr(strWhenAndState, ".")
+                        WhenSelectPos = InStr(strWhenAndState, "select ")
+                        WhenEnterPos = InStr(strWhenAndState, "enter ")
+                        WhenMakePos = InStr(strWhenAndState, "make ")
+                        WhenClickPos = InStr(strWhenAndState, "click ")
+                        WhenNavigatePos = InStr(strWhenAndState, "navigate ")
+                        WhenLaunchPos = InStr(strWhenAndState, "launch ")
+                        WhenLoadPos = InStr(strWhenAndState, "load ")
+                        WhenPerformPos = InStr(strWhenAndState, "perform ")
+                        WhenCreatePos = InStr(strWhenAndState, "create ")
+                        WhenSavePos = InStr(strWhenAndState, "save ")
+                        WhenCheckPos = InStr(strWhenAndState, "check ")
+                        whenAddPos = InStr(strWhenAndState, "add ")
+                        WhenApprovePos = InStr(strWhenAndState, "approve ")
+                        WhenSimulatePos = InStr(strWhenAndState, "simulate ")
+                        WhenDeclinePos = InStr(strWhenAndState, "decline ")
+                        WhenWaitPos = InStr(strWhenAndState, "wait ")
+                        WhenDonotPos = InStr(strWhenAndState, "do not ")
+                        WhenMinePos = InStr(strWhenAndState, "mine ")
+                        WhenPostBatchPos = InStr(strWhenAndState, "post batch")
+                        WhenAfterBatchPos = InStr(strWhenAndState, "after batch")
+                        If WhenDotPos > 0 Then
+                            Dim arrWhenDotPos
+                            arrWhenDotPos = Split(strWhenAndState, ".")
+                            For intwhenDot = 0 To UBound(arrWhenDotPos)
+                                If (arrWhenDotPos(intwhenDot)) <> "" Then
+                                    Stream.WriteLine "And" & "" & arrWhenDotPos(intwhenDot)
+                                End If
+                            Next
+                        ElseIf WhenSelectPos > 0 Then
+                            Dim arrwhenSelectPos
+                            arrwhenSelectPos = Split(strWhenAndState, "select ")
+                            For intwhenSelect = 0 To UBound(arrwhenSelectPos)
+                                If (arrwhenSelectPos(intwhenSelect)) <> "" Then
+                                    Stream.WriteLine "And" & " " & arrwhenSelectPos(intwhenSelect)
+                                End If
+                            Next
+                        ElseIf WhenEnterPos > 0 Then
+                            Dim arrWhenEnterPos
+                            arrWhenEnterPos = Split(strWhenAndState, "enter")
+                            For intWhenEnterPose = 0 To UBound(arrWhenEnterPos)
+                                If (arrWhenEnterPos(intWhenEnterPos)) <> "" Then
+                                    Stream.WriteLine "And" & " " & arrWhenEnterPos(intWhenEnterPos)
+                                End If
+                            Next
+                        ElseIf WhenMakePos > 0 Then
+                            Dim arrWhenMakePos
+                            arrWhenMakePos = Split(strWhenAndState, "make ")
+                            For intWhenMakePose = 0 To UBound(arrWhenMakePos)
+                                If (arrWhenMakePos(intWhenMakePos)) <> "" Then
+                                    Stream.WriteLine "And" & " " & arrWhenMakePos(intWhenMakePos)
+                                End If
+                            Next
+                        ElseIf WhenClickPos > 0 Then
+                            Dim arrWhenClickPos
+                            arrWhenClickPos = Split(strWhenAndState, "click ")
+                            For intWhenClickPos = 0 To UBound(arrWhenClickPos)
+                                If arrWhenClickPos(intWhenClickPos) <> "" Then
+                                    Stream.WriteLine "And" & " " & arrWhenClickPos(intWhenClickPos)
+                                End If
+                            Next
+                        ElseIf WhenNavigatePos > 0 Then
+                            Dim arrWhenNavigatePos
+                            arrWhenNavigatePos = Split(strWhenAndState, "navigate ")
+                            For intWhenNavigatePos = 0 To UBound(arrWhenNavigatePos)
+                                If arrWhenNavigatePos(intWhenNavigatePos) <> "" Then
+                                    Stream.WriteLine "And" & " " & arrWhenNavigatePos(intWhenNavigatePos)
+                                End If
+                            Next
+                        ElseIf WhenLaunchPos > 0 Then
+                        Dim arrwhenLaunchPos
+                        arrwhenLaunchPos = Split(strWhenAndState, "launch ")
+                        For intWhenLaunchPose = 0 To UBound(arrwhenLaunchPos)
+                            If arrwhenLaunchPos(intWhenLaunchPos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrwhenLaunchPos(intWhenLaunchPos)
+                            End If
+                        Next
+                        ElseIf WhenLoadPos > 0 Then
+                        Dim arrWhenLoadPos
+                        arrWhenLoadPos = Split(strWhenAndState, "load")
+                        For intWhenLoadPos = 0 To UBound(arrWhenLoadPos)
+                            If arrWhenLoadPos(intWhenLoadPos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrWhenLoadPos(intWhenLoadPos)
+                            End If
+                        Next
+                        ElseIf WhenPerformPos > 0 Then
+                        Dim arrwhenPerformPos
+                        arrwhenPerformPos = Split(strWhenAndState, "perform ")
+                        For intWhenPerformPos = 0 To UBound(arrwhenPerformPos)
+                            If arrwhenPerformPos(intWhenPerformPos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrwhenPerformPos(intWhenPerformPos)
+                            End If
+                        Next
+                        ElseIf WhenCreatePos > 0 Then
+                        Dim arrihenCreatePos
+                        arrWhenCreatePos = Split(strihenAndState, "create")
+                        For intwhenCreatePos = 0 To UBound(arrWhenCreatePos)
+                            If arrWhenCreatePos(intwhenCreatePos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrWhenCreatePos(intwhenCreatePos)
+                            End If
+                        Next
+                        ElseIf WhenSavePos > 0 Then
+                        Dim arrWhenSavePos
+                        arrWhenSavePos = Split(strWhenAndState, "save")
+                        For intWhenSavePos = 0 To UBound(arrWhenSavePos)
+                            If arrWhenSavePos(intWhenSavePos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrWhenSavePos(intWhenSavePos)
+                            End If
+                        Next
+                        ElseIf WhenCheckPos > 0 Then
+                        Dim arrWhenCheckPos
+                        arrWhenCheckPos = Split(strWhenAndState, "check ")
+                        For intWhenCheckPos = 0 To UBound(arrWhenCheckPos)
+                            If arrWhenCheckPos(intWhenCheckPos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrWhenCheckPos(intWhenCheckPos)
+                            End If
+                        Next
+                        ElseIf whenAddPos > 0 Then
+                        Dim arrWhenAddPos
+                        arrWhenAddPos = Split(strWhenAndState, "add")
+                        For intwhenAddPos = 0 To UBound(arrWhenAddPos)
+                            If arrWhenAddPos(intwhenAddPos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrWhenAddPos(intwhenAddPos)
+                            End If
+                        Next
+                        ElseIf WhenApprovePos > 0 Then
+                        Dim arrWhenApprovePos
+                        arrWhenApprovePos = Split(strWhenAndState, "approve ")
+                        For intWhenApprovePos = 0 To UBound(arrWhenApprovePos)
+                            If arrWhenApprovePos(intWhenApprovePos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrWhenApprovePos(intWhenApprovePos)
+                            End If
+                        Next
+                        ElseIf WhenSimulatePos > 0 Then
+                        Dim arrwhenSimulatePos
+                        arrwhenSimulatePos = Split(strWhenAndState, "simulate ")
+                        For intWhenSimulatePos = 0 To UBound(arrwhenSimulatePos)
+                            If arrwhenSimulatePos(intWhenSimulatePos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrwhenSimulatePos(intWhenSimulatePos)
+                            End If
+                        Next
+                        ElseIf WhenDeclinePos > 0 Then
+                        Dim arrWhenDeclinePos
+                        arrWhenDeclinePos = Split(strWhenAndState, "decline ")
+                        For intWhenDeclinePos = 0 To UBound(arrWhenDeclinePos)
+                            If arrWhenDeclinePos(intWhenDeclinePos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrWhenDeclinePos(intWhenDeclinePos)
+                            End If
+                        Next
+                        ElseIf WhenWaitPos > 0 Then
+                        Dim arrwhenWaitPos
+                        arrwhenWaitPos = Split(strWhenAndState, "wait ")
+                        For intWhenwaitPos = 0 To UBound(arrwhenWaitPos)
+                            If arrwhenWaitPos(intWhenwaitPos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrwhenWaitPos(intWhenwaitPos)
+                            End If
+                        Next
+                        ElseIf WhenDonotPos > 0 Then
+                        Dim arrWhenDonotPos
+                        arrWhenDonotPos = Split(strWhenAndState, "do not ")
+                        For intWhenDonotPos = 0 To UBound(arrWhenDonotPos)
+                            If arrWhenDonotPos(intWhenDonotPos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrWhenDonotPos(intWhenDonotPos)
+                            End If
+                        Next
+                        ElseIf WhenMinePos > 0 Then
+                        Dim arrWhenMinePos
+                        arrWhenMinePos = Split(strWhenAndState, "mine ")
+                        For intWhenMinePos = 0 To UBound(arrWhenMinePos)
+                            If arrWhenMinePos(intWhenMinePos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrWhenMinePos(intWhenMinePos)
+                            End If
+                        Next
+                        ElseIf WhenPostBatchPos > 0 Then
+                        Dim arrwhenPostBatchPos
+                        arrwhenPostBatchPos = Split(strWhenAndState, "post batch")
+                        For intWhenPostBatchPos = 0 To UBound(arrwhenPostBatchPos)
+                            If arrwhenPostBatchPos(intWhenPostBatchPos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrwhenPostBatchPos(intWhenPostBatchPos)
+                            End If
+                        Next
+                        ElseIf WhenAfterBatchPos > 0 Then
+                        Dim arrWhenAfterBatchPos
+                        arrWhenAfterBatchPos = Split(strWhenAndState, "after batch")
+                        For intWhenAfterBatchPos = 0 To UBound(arrWhenAfterBatchPos)
+                            If arrWhenAfterBatchPos(intWhenAfterBatchPos) <> "" Then
+                                Stream.WriteLine "And" & " " & arrWhenAfterBatchPos(intWhenAfterBatchPos)
+                            End If
+                        Next
+                        Else
+                            Stream.WriteLine "And" & " " & arrWhenAnd(intWhenAnd)
+                        End If
+                    End If
+                End If
+            Next
+        ElseIf strWhenSelect = True Then
+            arrwhenSelect = Split(LCase(BDDws.Cells(iRowCount, 16).Value), "select ")
+            For intwhenSelect = 0 To UBound(arrwhenSelect)
+                If arrwhenSelect(intwhenSelect) <> "" Then
+                    If intwhenSelect = 0 Then
+                        Stream.WriteLine "When" & " " & arrwhenSelect(intwhenSelect)
+                    Else
+                        Stream.WriteLine "And" & " " & arrwhenSelect(intwhenSelect)
+                    End If
+                End If
+            Next
+        ElseIf strwhenEnter = True Then
+        arrWhenEnter = Split(LCase(BDDws.Cells(iRowCount, 16).Value), "enter ")
+        For intWhenEnter = 0 To UBound(arrWhenEnter)
+            If arrWhenEnter(intWhenEnter) <> "" Then
+                If intWhenEnter = 0 Then
+                    Stream.WriteLine "when" & " " & arrWhenEnter(intWhenEnter)
+                Else
+                    Stream.WriteLine "And" & " " & arrWhenEnter(intWhenEnter)
+                End If
+            End If
+        Next
+        ElseIf striwhenMake = True Then
+            arrWhenMake = Split(LCase(BDDws.Cells(iRowCount, 16).Value), "make ")
+            For intWhenMake = 0 To UBound(arrWhenMake)
+                If arrWhenMake(intWhenMake) <> "" Then
+                    If intWhenMake = 0 Then
+                        Stream.WriteLine "when" & " " & arrWhenMake(intWhenMake)
+                    Else
+                        Stream.WriteLine "And" & " " & arrWhenMake(intWhenMake)
+                    End If
+                End If
+            Next
+        ElseIf strWhenClick = True Then
+        arrwhenClick = Split(LCase(BDDws.Cells(iRowCount, 16).Value), "click ")
+        For intwhenClick = 0 To UBound(arrwhenClick)
+            If arrwhenClick(intwhenClick) <> "" Then
+                If intwhenClick = 0 Then
+                    Stream.WriteLine "When" & " " & arrwhenClick(intwhenClick)
+                Else
+                    Stream.WriteLine "And" & " " & arrwhenClick(intwhenClick)
+                End If
+            End If
+        Next
+        ElseIf strWhenNavigate = True Then
+            arrWhenNavigate = Split(LCase(BDDws.Cells(iRowCount, 16).Value), "navigate ")
+            For intWhenNavigate = 0 To UBound(arrWhenNavigate)
+                If arrWhenNavigate(intWhenNavigate) <> "" Then
+                    If intWhenNavigate = 0 Then
+                        Stream.WriteLine "When" & " " & arrWhenNavigate(intWhenNavigate)
+                    Else
+                        Stream.WriteLine "And" & " " & arrWhenNavigate(intWhenNavigate)
+                    End If
+                End If
+            Next
+            ElseIf strwhenLaunch = True Then
+            arrwhenLaunch = Split(LCase(BDDws.Cells(iRowCount, 16).Value), "launch ")
+            For intwhenLaunch = 0 To UBound(arrwhenLaunch)
+                If arrwhenLaunch(intwhenLaunch) <> "" Then
+                    If intwhenLaunch = 0 Then
+                        Stream.WriteLine "When" & " " & arrwhenLaunch(intwhenLaunch)
+                    Else
+                        Stream.WriteLine "And" & " " & arrwhenLaunch(intwhenLaunch)
+                    End If
+                End If
+            Next
+            ElseIf WhenDotPos = True Then
+            arrwhenDot = Split(LCase(BDDws.Cells(iRowCount, 16).Value), ".")
+            For intwhenDot = 0 To UBound(arrwhenDot)
+                If arrwhenDot(intwhenDot) > "" Then
+                    If intwhenDot = 0 Then
+                        Stream.WriteLine "when" & " " & arrwhenDot(intwhenDot)  'BDDws.Cells(iRowCount, 16).Value"
+                    Else
+                        Stream.WriteLine "And" & " " & arrwhenDot(intwhenDot) 'BDDws.Cells(iRowCount, 16).Value"
+                    End If
+                End If
+            Next
+            Else
+                Stream.WriteLine "when" & " " & BDDws.Cells(iRowCount, 16).Value
+            End If
+        End If
+Else
+
+    'Finding if there are more than one statement in step description
+     'With objRegExp
+     'Global True
+     '.MultiLine True
+     '.IgnoreCase = True
+     '.Pattern = "and"
+     'End With
+    '--------------Find if test scription is separated by "and" keyword----
+    Dim strAnd, strSelect, strEnter, strmake, findpostion, FindPos, SelectPos
+    Dim ClickPos, strClick, strNavigate, NavigatePos, EnterPos, MakePos
+    strAnd = Regularexp(" and ", BDDws.Cells(iRowCount + 1, 15).Value) '- newly added code
+    strSelect = Regularexp("select ", BDDws.Cells(iRowCount + 1, 15).Value) '- newly added code
+    strEnter = Regularexp("enter ", BDDws.Cells(iRowCount + 1, 15).Value) '- newly added code
+    strmake = Regularexp("make ", BDDws.Cells(iRowCount + 1, 15).Value)
+    strClick = Regularexp("click ", BDDws.Cells(iRowCount + 1, 15).Value)
+    strNavigate = Regularexp("navigate ", BDDws.Cells(iRowCount + 1, 15).Value)
+    strLaunch = Regularexp("launch ", BDDws.Cells(iRowCount + 1, 15).Value)
+    findpostion = InStr(BDDws.Cells(iRowCount + 1, 15).Value, ".")
+    StrLoad = Regularexp("load", BDDws.Cells(iRowCount + 1, 15).Value)
+    '-------------------------------------------------------------------------
+    StrPerform = Regularexp("perform ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrCreate = Regularexp("create ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrSave = Regularexp("save ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrCheck = Regularexp("check ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrAdd = Regularexp("add ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrApprove = Regularexp("approve ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrSimulate = Regularexp("simulate ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrDecline = Regularexp("decline ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrWait = Regularexp("wait ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrDonot = Regularexp("do not ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrMine = Regularexp("mine ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrPostBatch = Regularexp("post batch ", BDDws.Cells(iRowCount + 1, 15).Value)
+    StrAfterBatch = Regularexp("after batch ", BDDws.Cells(iRowCount + 1, 15).Value)
+    '-------------------------------------------------------------------
+    If strAnd = True Then
+    arrFindAnd = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), " and ")
+    For i = 0 To UBound(arrFindAnd)
+        Dim strArrVal As String
+        strArrVal = arrFindAnd(i)
+        'Stream.WriteLine "And" & & arrFindAnd (i)-- working code
+        'Finding a statement separated by a period after spliting it by and keyword- newly added code
+        'strDot= Regularexp(".", strArrVal)
+        FindPos = InStr(strArrVal, ".")
+        SelectPos = InStr(strArrVal, "select ")
+        EnterPos = InStr(strArrVal, "enter ")
+        MakePos = InStr(strArrVal, "make ")
+        ClickPos = InStr(strArrVal, "click ")
+        NavigatePos = InStr(strArrVal, "navigate ")
+        LaunchPos = InStr(strArrVal, "launch ")
+        '------------------------------------------------------------------------------
+        PerformPos = InStr(strArrVal, "perform ")
+        CreatePos = InStr(strArrVal, "create ")
+        SavePos = InStr(strArrVal, "save ")
+        CheckPos = InStr(strArrVal, "check ")
+        AddPos = InStr(strArrVal, "add ")
+        ApprovePos = InStr(strArrVal, "approve ")
+        SimulatePos = InStr(strArrVal, "simulate ")
+        DeclinePos = InStr(strArrVal, "decline ")
+        WaitPos = InStr(strArrVal, "wait ")
+        DonotPos = InStr(strArrVal, "do not ")
+        MinePos = InStr(strArrVal, "mine ")
+        PostBatchPos = InStr(strArrVal, "post batch ")
+        AfterBatchPos = InStr(strArrVal, "after batch ")
+        '--------------------------------------------------------------------
+        If FindPos > 0 Then
+            Dim arrDot
+            arrDot = Split(strArrVal, ".")
+            For intDot = 0 To UBound(arrDot)
+                If (arrDot(intDot)) <> "" Then
+                    Stream.WriteLine "And" & " " & arrDot(intDot)
+                End If
+            Next
+        ElseIf SelectPos > 0 Then
+            Dim arrSelect
+            arrSelect = Split(LCase(strArrVal), "select ")
+            For intSelect = 0 To UBound(arrSelect)
+                If (arrSelect(intSelect)) <> "" Then
+                    If intSelect = UBound(arrSelect) Then
+                        Stream.WriteLine "And" & " " & "Select" & " " & arrSelect(intSelect)
+                    Else
+                        Stream.WriteLine "And" & " " & arrSelect(intSelect)
+                    End If
+                End If
+            Next
+        ElseIf EnterPos > 0 Then
+            Dim arrEnter
+            arrEnter = Split(LCase(strArrVal), "enter ")
+            For intEnter = 0 To UBound(arrEnter)
+                If (arrEnter(intEnter)) <> "" Then
+                    If intEnter = UBound(arrEnter) Then
+                        Stream.WriteLine "And" & " " & "Enter" & " " & arrEnter(intEnter)
+                    Else
+                        Stream.WriteLine "And" & " " & arrEnter(intEnter)
+                    End If
+                End If
+            Next
+        ElseIf MakePos > 0 Then
+            Dim arrMake
+            arrMake = Split(LCase(strArrVal), "make ")
+                For intmake = 0 To UBound(arrMake)
+                    If (arrMake(intmake)) <> "" Then
+                        If intmake = UBound(arrMake) Then
+                            Stream.WriteLine "And" & " " & "Make" & " " & arrMake(intmake)
+                        Else
+                            Stream.WriteLine "And" & " " & arrMake(intmake)
+                        End If
+                    End If
+                Next
+        ElseIf NavigatePos > 0 Then
+            Dim arrNavigate
+            arrNavigate = Split(LCase(strArrVal), "navigate ")
+            For intNavigate = 0 To UBound(arrNavigate)
+                If (arrNavigate(intNavigate)) <> "" Then
+                    If intNavigate = UBound(arrNavigate) Then
+                        Stream.WriteLine "And" & " " & "Navigate" & " " & arrNavigate(intNavigate)
+                    Else
+                        Stream.WriteLine "And" & " " & arrNavigate(intNavigate)
+                    End If
+                End If
+            Next
+        ElseIf LaunchPos > 0 Then
+            Dim arrLaunch
+            arrLaunch = Split(LCase(strArrVal), "launch ")
+            For intLaunch = 0 To UBound(arrLaunch)
+                If arrLaunch(intLaunch) <> "" Then
+                    If intLaunch = UBound(arrLaunch) Then
+                        Stream.WriteLine "And" & " " & "Launch" & " " & arrLaunch(intLaunch)
+                    Else
+                        Stream.WriteLine "And" & " " & arrLaunch(intLaunch)
+                    End If
+                End If
+            Next
+        ElseIf ClickPos > 0 Then
+            Dim arrClick
+            arrClick = Split(LCase(strArrVal), "click ")
+            For intClick = 0 To UBound(arrClick)
+                If arrClick(intClick) <> "" Then
+                    If intClick = UBound(arrClick) Then
+                        Stream.WriteLine "And" & " " & "click" & " " & arrClick(intClick)
+                    Else
+                        Stream.WriteLine "And" & " " & arrClick(intClick)
+                    End If
+                End If
+            Next
+        ElseIf PerformPos > 0 Then
+            Dim arrPerform
+            arrPerform = Split(LCase(strArrVal), "perform ")
+            For intPerform = 0 To UBound(arrPerform)
+                If arrPerform(intPerform) <> "" Then
+                    If intPerform = UBound(arrPerform) Then
+                        Stream.WriteLine "And" & "" & "Perform" & " & arrPerform(intPerform)"
+                    Else
+                        Stream.WriteLine "And" & " " & arrPerform(intPerform)
+                    End If
+                End If
+            Next
+        ElseIf CreatePos > 0 Then
+            Dim arrCreate
+            arrCreate = Split(LCase(strArrVal), "create ")
+            For intCreate = 0 To UBound(arrCreate)
+                If arrCreate(intCreate) <> "" Then
+                    If intCreate = UBound(arrCreate) Then
+                        Stream.WriteLine "And" & "" & "Perform" & "" & arrCreate(intCreate)
+                    Else
+                        Stream.WriteLine "And" & " " & arrCreate(intCreate)
+                    End If
+                End If
+            Next
+        Else
+            Stream.WriteLine "And" & " " & arrFindAnd(i)
+        End If
+        '--------------+----------------------------------+-
+    Next
+    ElseIf strSelect = True Then
+        arrFindSelect = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "select ")
+        For intStatSelect = 0 To UBound(arrFindSelect)
+            If arrFindSelect(intStatSelect) <> "" Then
+                If intStatSelect = UBound(arrFindSelect) Then
+                    Stream.WriteLine "And" & " " & "Select" & " " & arrFindSelect(intStatSelect)
+                 Else
+                    Stream.WriteLine "And" & " " & arrFindSelect(intStatSelect)
+                End If
+            End If
+        Next
+    ElseIf strEnter = True Then
+        arrFindEnter = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "enter")
+            For intStatEnter = 0 To UBound(arrFindEnter)
+                If arrFindEnter(intStatEnter) <> "" Then
+                    If intStatEnter = UBound(arrFindEnter) Then
+                        Stream.WriteLine "And" & " " & "Enter" & " " & arrFindEnter(intStatEnter)
+                    Else
+                        Stream.WriteLine "And" & " " & arrFindEnter(intStatEnter)
+                    End If
+                End If
+            Next
+    ElseIf strmake = True Then
+        arrFindMake = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "make ")
+        For intStatmake = 0 To UBound(arrFindMake)
+            If arrFindMake(intStatmake) <> "" Then
+                If intStatmake = UBound(arrFindMake) Then
+                    Stream.WriteLine "And" & " " & "Make" & " " & arrFindMake(intStatmake)
+                Else
+                    Stream.WriteLine "And" & "" & arrFindMake(intStatmake)
+                End If
+            End If
+        Next
+    ElseIf strClick = True Then
+        arrClick = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "click ")
+        For intClick = 0 To UBound(arrClick)
+            If arrClick(intClick) <> "" Then
+                If intClick = UBound(arrClick) Then
+                    Stream.WriteLine "And" & " " & "Click" & " " & arrClick(intClick)
+                Else
+                    Stream.WriteLine "And" & " " & arrClick(intClick)
+                End If
+            End If
+        Next
+    ElseIf strNavigate = True Then
+        arrNavigate = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "navigate ")
+        For intNavigate = 0 To UBound(arrNavigate)
+            If arrNavigate(intNavigate) <> "" Then
+                If intNavigate = UBound(arrNavigate) Then
+                    Stream.WriteLine "And" & "" & "Navigate" & " " & arrNavigate(intNavigate)
+                Else
+                    Stream.WriteLine "And" & " " & arrNavigate(intNavigate)
+                End If
+            End If
+        Next
+        ElseIf strLaunch = True Then
+            arrLaunch = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "launch ")
+            For intLaunch = 0 To UBound(arrLaunch)
+                If arrLaunch(intLaunch) <> "" Then
+                    If intLaunch = UBound(arrLaunch) Then
+                        Stream.WriteLine "And" & " " & "Launch" & " " & arrLaunch(intLaunch)
+                    Else
+                        Stream.WriteLine "And" & "" & arrLaunch(intLaunch)
+                    End If
+                End If
+            Next
+        ElseIf findpostion > 0 Then
+            arrStatementDot = Split(BDDws.Cells(iRowCount + 1, 15).Value, ".")
+            For intStatDote = 0 To UBound(arrStatementDot)
+                If arrStatementDot(intStatDot) <> " " Then
+                    Stream.WriteLine "And" & " " & arrStatementDot(intStatDot)
+                End If
+            Next
+        ElseIf StrPerform = True Then
+            arrPerform = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "perform ")
+            For intPerform = 0 To UBound(arrPerform)
+                If arrPerform(intPerform) <> "" Then
+                    If intPerform = UBound(arrPerform) Then
+                        Stream.WriteLine "And" & "- " & "Perform" & " " & arrPerform(intPerform)
+                    Else
+                        Stream.WriteLine "And" & " & arrPerform(intPerform)"
+                    End If
+                End If
+            Next
+        ElseIf StrCreate = True Then
+            arrCreate = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "create ")
+                For intCreate = 0 To UBound(arrCreate)
+                    If arrCreate(intCreate) <> "" Then
+                        If intCreate = UBound(arrCreate) Then
+                            Stream.WriteLine "And" & " " & "Create" & " " & arrCreate(intCreate)
+                        Else
+                            Stream.WriteLine "And" & " " & arrCreate(intCreate)
+                        End If
+                     End If
+                Next
+
+        ElseIf StrSave = True Then
+            arrSave = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "save ")
+            For intSave = 0 To UBound(arrSave)
+                If arrSave(intSave) <> "" Then
+                    If intSave = UBound(arrSave) Then
+                        Stream.WriteLine "And" & " " & "Save" & " " & arrSave(intSave)
+                    Else
+                        Stream.WriteLine "And" & " " & arrSave(intSave)
+                    End If
+                End If
+            Next
+        ElseIf StrCheck = True Then
+            arrCheck = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "check ")
+            For intCheck = 0 To UBound(arrCheck)
+                If arrCheck(intCheck) <> "" Then
+                    If intCheck = UBound(arrCheck) Then
+                        Stream.WriteLine "And" & " " & "Check" & " " & arrCheck(intCheck)
+                    Else
+                        Stream.WriteLine "And" & " " & arrCheck(intCheck)
+                    End If
+                End If
+            Next
+        ElseIf StrAdd = True Then
+            arrAdd = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "add ")
+            For intAdd = 0 To UBound(arrAdd)
+                If arrAdd(intAdd) <> "" Then
+                    If intAdd = UBound(arrAdd) Then
+                        Stream.WriteLine "And" & "" & "Add" & " " & arrAdd(intAdd)
+                    Else
+                        Stream.WriteLine "And" & " " & arrAdd(intAdd)
+                    End If
+                End If
+            Next
+        ElseIf StrApprove = True Then
+            arrApprove = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "approve ")
+            For intApprove = 0 To UBound(arrApprove)
+                If arrApprove(intApprove) <> "" Then
+                    If intApprove = UBound(arrApprove) Then
+                        Stream.WriteLine "And" & " " & "Approve" & " " & arrApprove(intApprove)
+                    Else
+                        Stream.WriteLine "And" & " " & arrApprove(intApprove)
+                    End If
+                End If
+            Next
+        ElseIf StrSimulate = True Then
+            arrSimulate = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "simulate ")
+            For intSimulate = 0 To UBound(arrSimulate)
+                If arrSimulate(intSimulate) <> "" Then
+                    If intSimulate = UBound(arrSimulate) Then
+                        Stream.WriteLine "And" & " " & "Simulate" & " " & arrSimulate(intSimulate)
+                    Else
+                        Stream.WriteLine "And" & " " & arrSimulate(intSimulate)
+                    End If
+                End If
+             Next
+        ElseIf StrDecline = True Then
+            arrDecline = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "decline ")
+            For intDecline = 8 To UBound(arrDecline)
+                If arrDecline(intDecline) <> "" Then
+                    If intDecline = UBound(arrDecline) Then
+                        Stream.WriteLine "And" & " " & "Decline" & " " & arrDecline(intDecline)
+                    Else
+                        Stream.WriteLine "And" & " " & arrDecline(intDecline)
+                    End If
+                End If
+            Next
+        ElseIf StrWait = True Then
+            arrwait = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "wait ")
+            For intWait = 0 To UBound(arrwait)
+                If arrwait(intWait) <> "" Then
+                    If intWait = UBound(arrwait) Then
+                        Stream.WriteLine "And" & " " & "wait" & arrwait(intWait)
+                    Else
+                        Stream.WriteLine "And" & " " & arrwait(intWait)
+                    End If
+                End If
+            Next
+        ElseIf StrDonot = True Then
+            arrDonot = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "do not ")
+            For intDonot = 8 To UBound(arrDonot)
+                If arrDonot(intDonot) <> " " Then
+                    If intDonot = UBound(arrDonot) Then
+                        Stream.WriteLine "And" & " " & "Do Not" & " " & arrDonot(intDonot)
+                    Else
+                        Stream.WriteLine "And" & " " & arrDonot(intDonot)
+                    End If
+                End If
+            Next
+        ElseIf StrMine = True Then
+            arrMine = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "mine ")
+            For intMine = 0 To UBound(arrMine)
+                If arrMine(intMine) <> "" Then
+                    If intMine = UBound(arrMine) Then
+                        Stream.WriteLine "And" & "" & "Mine" & " " & arrMine(intMine)
+                    Else
+                        Stream.WriteLine "And" & " " & arrMine(intMine)
+                    End If
+                End If
+            Next
+        ElseIf StrMine = True Then
+            arrMine = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "mine ")
+            For intMine = 0 To UBound(arrMine)
+                If arrMine(intMine) <> "" Then
+                    If intMine = UBound(arrMine) Then
+                        Stream.WriteLine "And" & " " & "Mine" & " " & arrMine(intMine)
+                    Else
+                        Stream.WriteLine "And" & " " & arrMine(intMine)
+                    End If
+                End If
+            Next
+        ElseIf StrPostBatch = True Then
+            arrPostBatch = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "post batch ")
+            For intPostBatch = 0 To UBound(arrPostBatch)
+                If arrPostBatch(intPostBatch) <> " " Then
+                    If intPostBatch = UBound(arrPostBatch) Then
+                        Stream.WriteLine "And" & " " & "Post Batch" & " " & arrPostBatch(intPostBatch)
+                    Else
+                        Stream.WriteLine "And" & " " & arrPostBatch(intPostBatch)
+                    End If
+                End If
+            Next
+        ElseIf StrAfterBatch = True Then
+            arrAfterBatch = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "after batch ")
+            For intAfterBatch = 0 To UBound(arrAfterBatch)
+                If arrAfterBatch(intAfterBatch) <> "" Then
+                    If intAfterBatch = UBound(arrAfterBatch) Then
+                        Stream.WriteLine "And" & " " & "After Batch" & " " & arrAfterBatch(intAfterBatch)
+                    Else
+                        Stream.WriteLine "And" & " " & arrAfterBatch(intAfterBatch)
+                    End If
+                End If
+            Next
+        Else
+            Stream.WriteLine "And" & " " & BDDws.Cells(iRowCount + 1, 15).Value
+        End If
+            '-------Test Description separate by and key word-----------------
+            '************** Working code***************
+            'Stream.WriteLine "And" & " " & BDDws.Cells(iRowCount + 1, 15).Value
+            'MsgBox "Expected Result:" & "" & BDDws.Cells(iRowCount + 1, 16).Value
+            'Stream.WriteLine "Then" & "" & BDDws.Cells(iRowCount + 1, 16).Value
+            '**†*************†********************
+            'Stream.WriteLine "Then" & "" & BDDws.Cells(iRowCount + 1, 16).Value
+            '***************************************
+            '-----------------Then statement code-----------------------------------
+            Dim strThenSelect, strThenEnter, strThenmake, strThenClick, strThenNavigate, strThenLaunch, strThenLogin
+            Dim arrThenSelect, arrThenEnter, arrThenmake, arrThenClick, arrThenNavigate, arrThenLaunch, arrThenLogin
+            strThenSelect = Regularexp("select ", BDDws.Cells(iRowCount + 1, 16).Value) '- newly added code
+            strThenEnter = Regularexp("enter ", BDDws.Cells(iRowCount + 1, 16).Value) '- newly added code
+            strThenmake = Regularexp("make ", BDDws.Cells(iRowCount + 1, 16).Value)
+            strThenClick = Regularexp("click ", BDDws.Cells(iRowCount + 1, 16).Value)
+            strThenNavigate = Regularexp("navigate ", BDDws.Cells(iRowCount + 1, 16).Value)
+            strThenLaunch = Regularexp("launch ", BDDws.Cells(iRowCount + 1, 16).Value)
+            strThenLogin = Regularexp(".login", BDDws.Cells(iRowCount + 1, 16).Value)
+            ThenDotPos = InStr(BDDws.Cells(iRowCount + 1, 16).Value, ".")
+            If strThenSelect = True Then
+                arrThenSelect = Split(LCase(BDDws.Cells(iRowCount + 1, 16).Value), "select ")
+                For intThenSelect = 0 To UBound(arrThenSelect)
+                    If arrThenSelect(intThenSelect) <> "" Then
+                        If intThenSelect = 0 Then
+                            Stream.WriteLine "Then" & " " & arrThenSelect(intThenSelect)
+                        Else
+                            strThenSatement = LCase(arrThenSelect(intThenSelect))
+                            Dim strSelectVerifyPos, strSelectValidatePos, strSelectCheckPos
+                            Dim arrSelectVerifyPos, arrSelectValidatePos, arrSelectCheckPos
+                            strSelectVerifyPos = InStr(LCase(strThenSatement), "verify ")
+                            strSelectValidatePos = InStr(LCase(strThenSatement), "validate ")
+                            strSelectCheckPos = InStr(LCase(strThenSatement), "check ")
+                            If strSelectVerifyPose > 0 Then
+                                arrSelectVerifyPos = Split(strThenSatement, "verify ")
+                                For intSelectVerifyPos = 0 To UBound(arrSelectVerifyPos)
+                                    If arrSelectVerifyPos(intSelectVerifyPos) <> "" Then
+                                        If intSelectVerifyPos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Select" & " " & arrSelectVerifyPos(intSelectVerifyPos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Verify" & " " & arrSelectVerifyPos(intSelectVerifyPos)
+                                        End If
+                                    End If
+                                Next
+                            ElseIf strSelectValidatePose > 0 Then
+                                arrSelectValidatePos = Split(strThenSatement, "validate ")
+                                For intSelectValidatePos = 0 To UBound(arrSelectValidatePos)
+                                    If arrSelectValidatePos(intSelectValidatePos) <> " " Then
+                                        If intSelectValidatePos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Select" & " " & arrSelectValidatePos(intSelectValidatePos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Validate" & " " & arrSelectValidatePos(intSelectValidatePos)
+                                        End If
+                                     End If
+                                Next
+                            ElseIf strSelectCheckPos > 0 Then
+                                arrSelectCheckPos = Split(strThenSatement, "check ")
+                                For intSelectCheckPos = 0 To UBound(arrSelectCheckPos)
+                                    If arrSelectCheckPos(intSelectCheckPos) <> "" Then
+                                        If intSelectCheckPos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Select" & " " & arrSelectCheckPos(intSelectCheckPos)
+                                        Else
+                                            Stream.WriteLine "Then" & "" & "Check" & " " & arrSelectCheckPos(intSelectCheckPos)
+                                        End If
+                                     End If
+                                Next
+                            Else
+                                Stream.WriteLine "And" & "" & "Select" & " " & arrThenSelect(intThenSelect)
+
+                            End If
+                        End If
+                    End If
+                Next
+        ElseIf strThenEnter = True Then
+            arrThenEnter = Split(LCase(BDDws.Cells(iRowCount + 1, 16).Value), "enter")
+            For intThenEnter = 0 To UBound(arrThenEnter)
+                If arrThenEnter(intThenEnter) <> "" Then
+                    If intThenEnter = 0 Then
+                        Stream.WriteLine "Then" & " " & arrThenEnter(intThenEnter)
+                    Else
+                        strThenEnterSatement = LCase(arrThenEnter(intThenEnter))
+                        Dim strEnterVerifyPos, strEnterValidatePos, strEnterCheckPos
+                        Dim arrEnterVerifyPos, arrEnterValidatePos, arrEnterCheckPos
+                        strEnterVerifyPos = InStr(LCase(strThenEnterSatement), "verify ")
+                        strEnterValidatePos = InStr(LCase(strThenEnterSatement), "validate ")
+                        strEnterCheckPos = InStr(LCase(strThenEnterSatement), "check ")
+                        If strEnterVerifyPos > 0 Then
+                            arrEnterVerifyPos = Split(strThenEnterSatement, "verify ")
+                            For intEnterVerifyPos = 0 To UBound(arrEnterVerifyPos)
+                                If arrEnterVerifyPos(intEnterVerifyPos) <> "" Then
+                                    If intEnterVerifyPos = 0 Then
+                                        Stream.WriteLine "And" & " " & "Enter" & " " & arrEnterVerifyPos(intEnterVerifyPos)
+                                    Else
+                                        Stream.WriteLine "Then" & " " & "Verify" & " " & arrEnterVerifyPos(intEnterVerifyPos)
+                                    End If
+                                End If
+                             Next
+                        ElseIf strEnterValidatePos > 0 Then
+                            arrEnterValidatePos = Split(strThenEnterSatement, "validate ")
+                                For intEnterValidatePos = 0 To UBound(arrEnterValidatePos)
+                                    If arrEnterValidatePos(intEnterValidatePos) <> "" Then
+                                        If intEnterValidatePos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Enter" & " " & arrEnterValidatePos(intEnterValidatePos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Validate" & " " & arrEnterValidatePos(intEnterValidatePos)
+                                        End If
+                                     End If
+                                 Next
+                        ElseIf strEnterCheckPos > 0 Then
+                            arrEnterCheckPos = Split(strThenEnterSatement, "check ")
+                                For intEnterCheckPos = 0 To UBound(arrEnterCheckPos)
+                                    If arrEnterCheckPos(intEnterCheckPos) <> "" Then
+                                        If intEnterCheckPos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Enter" & " " & arrEnterCheckPos(intEnterCheckPos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Check" & " " & arrEnterCheckPos(intEnterCheckPos)
+                                        End If
+                                     End If
+                                 Next
+                        Else
+                            Stream.WriteLine "And" & " " & "Enter" & " " & arrThenEnter(intThenEnter)
+                        End If
+                    End If
+                End If
+            Next
+        ElseIf strThenmake = True Then
+                arrThenmake = Split(LCase(BDDws.Cells(iRowCount + 1, 16).Value), "make ")
+                For intThenMake = 0 To UBound(arrThenmake)
+                    If arrThenmake(intThenMake) <> "" Then
+                        If intThenMake = 0 Then
+                            Stream.WriteLine "Then" & " " & arrThenmake(intThenMake)
+                        Else
+                            strThenMakeSatement = LCase(arrThenmake(intThenMake))
+                            Dim strMakeVerifyPos, strMakeValidatePos, strMakeCheckPos
+                            Dim arrMakeVerifyPos, arrMakeValidatePos, arrMakeCheckPos
+                            strMakeVerifyPos = InStr(LCase(strThenEnterSatement), "verify ")
+                            strMakeValidatePos = InStr(LCase(strThenEnterSatement), "validate ")
+                            strMakeCheckPos = InStr(LCase(strThenEnterSatement), "check ")
+                            If strMakeVerifyPos > 0 Then
+                                arrMakeVerifyPos = Split(strThenEnterSatement, "verify ")
+                                For intMakeVerifyPos = 0 To UBound(arrMakeVerifyPos)
+                                    If arrMakeVerifyPos(intMakeVerifyPos) <> "" Then
+                                        If intMakeVerifyPos = 0 Then
+                                            Stream.WriteLine "And" & "" & "Make" & " " & arrMakeVerifyPos(intMakeVerifyPos)
+                                        Else
+                                            Stream.WriteLine "Then" & "" & "Verify" & " " & arrMakeVerifyPos(intMakeVerifyPos)
+                                        End If
+                                    End If
+                                Next
+                            ElseIf strMakeValidatePos > 0 Then
+                                arrMakeValidatePos = Split(strThenEnterSatement, "validate ")
+                                For intMakeValidatePos = 0 To UBound(arrMakeValidatePos)
+                                    If arrMakeValidatePos(intMakeValidatePos) <> "" Then
+                                        If intMakeValidatePos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Make" & "" & arrMakeValidatePos(intMakeValidatePos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Validate" & " " & arrMakeValidatePos(intMakeValidatePos)
+                                        End If
+                                     End If
+                                 Next
+                            ElseIf strMakeCheckPos > 0 Then
+                                arrMakeCheckPos = Split(strThenEnterSatement, "check ")
+                                    For intMakeCheckPos = 0 To UBound(arrMakeCheckPos)
+                                        If arrMakeCheckPos(intMakeCheckPos) <> " " Then
+                                            If intMakeCheckPos = 0 Then
+                                                Stream.WriteLine "And" & " " & "Make" & " " & arrMakeCheckPos(intMakeCheckPos)
+                                            Else
+                                                Stream.WriteLine "Then" & " " & "Check" & " " & arrMakeCheckPos(intMakeCheckPos)
+                                            End If
+                                         End If
+                                     Next
+                            Else
+                                Stream.WriteLine "And" & " " & "Make" & " " & arrThenmake(intThenMake)
+                            End If
+                        End If
+                    End If
+                Next
+        ElseIf strThenClick = True Then
+            arrThenClick = Split(LCase(BDDws.Cells(iRowCount + 1, 16).Value), "click ")
+            For intThenClick = 0 To UBound(arrThenClick)
+                If arrThenClick(intThenClick) <> " " Then
+                    If intThenClick = 0 Then
+                        Stream.WriteLine "Then" & " " & arrThenClick(intThenClick)
+                    Else
+                        strThenClickSatement = LCase(arrThenClick(intThenClick))
+                        Dim strClickVerifyPos, strClickValidatePos, strClickCheckPos
+                        Dim arrClickVerifyPos, arrClickValidatePos, arrClickCheckPos
+                        strClickVerifyPos = InStr(LCase(strThenClickSatement), "verify ")
+                        strClickValidatePos = InStr(LCase(strThenClickSatement), "validate")
+                        strClickCheckPos = InStr(LCase(strThenClickSatement), "check ")
+                        If strClickVerifyPos > 0 Then
+                            arrClickVerifyPos = Split(strThenClickSatement, "verify ")
+                            For intClickVerifyPos = 0 To UBound(arrClickVerifyPos)
+                                If arrClickVerifyPos(intClickVerifyPos) <> "" Then
+                                    If intClickVerifyPos = 0 Then
+                                        Stream.WriteLine "And" & "" & "click" & " " & arrClickVerifyPos(intClickVerifyPos)
+                                    Else
+                                        Stream.WriteLine "Then" & " " & "Verify" & "  " & arrClickVerifyPos(intClickVerifyPos)
+                                    End If
+                                 End If
+                             Next
+                         ElseIf strClickValidatePos > 0 Then
+                            arrClickValidatePos = Split(strThenClickSatement, "validate")
+                            For intClickValidatePos = 0 To UBound(arrClickValidatePos)
+                                If arrClickValidatePos(intClickValidatePos) <> " " Then
+                                    If intClickValidatePos = 0 Then
+                                        Stream.WriteLine "And" & " " & "click" & " " & arrClickValidatePos(intClickValidatePos)
+                                    Else
+                                        Stream.WriteLine "Then" & " " & "Validate" & " " & arrClickValidatePos(intClickValidatePos)
+                                    End If
+                                 End If
+                             Next
+                        ElseIf strClickCheckPos > 0 Then
+                            arrClickCheckPos = Split(strThenClickSatement, "check ")
+                            For intClickCheckPos = 0 To UBound(arrClickCheckPos)
+                                If arrClickCheckPos(intClickCheckPos) <> "" Then
+                                    If intClickCheckPose = 0 Then
+                                        Stream.WriteLine "And" & " " & "Click" & " " & arrClickCheckPos(intClickCheckPos)
+                                    Else
+                                        Stream.WriteLine "Then" & "Check" & " " & arrClickCheckPos(intClickCheckPos)
+                                    End If
+                                End If
+                            Next
+
+                        Else
+                            Stream.WriteLine "And" & " " & "Click" & " " & arrThenClick(intThenClick)
+                        End If
+                    End If
+                End If
+            Next
+        ElseIf strThenNavigate = True Then
+            arrThenNavigate = Split(LCase(BDDws.Cells(iRowCount + 1, 16).Value), "navigate ")
+                For intThenNavigate = 0 To UBound(arrThenNavigate)
+                    If arrThenNavigate(intThenNavigate) <> "" Then
+                        If intThenNavigate = 0 Then
+                            Stream.WriteLine "Then" & " " & arrThenNavigate(intThenNavigate)
+                            strThenNavigateSatement = LCase(arrThenNavigate(intThenNavigate))
+                            Dim strNavigateVerifyPos, strNavigateValidatePos, strNavigateCheckPos
+                            Dim arrNavigateVerifyPos, arrNavigateValidatePos, arrNavigateCheckPos
+                            strNavigateVerifyPos = InStr(LCase(strThenNavigateSatement), "verify ")
+                            strNavigateValidatePos = InStr(LCase(strThenNavigateSatement), "validate ")
+                            strNavigateCheckPos = InStr(LCase(strThenNavigateSatement), "check ")
+                         Else
+                            If strNavigateVerifyPos > 0 Then
+                            arrNavigateVerifyPos = Split(strThenNavigateSatement, "verify ")
+                            For intNavigateVerifyPos = 0 To UBound(arrNavigateVerifyPos)
+                                If arrNavigateVerifyPos(intNavigateVerifyPos) <> "" Then
+                                    If intNavigateVerifyPos = 0 Then
+                                        Stream.WriteLine "And" & " " & "Navigate" & " " & arrNavigateVerifyPos(intNavigateVerifyPos)
+                                    Else
+                                        Stream.WriteLine "Then" & " " & "Verify" & " " & arrNavigateVerifyPos(intNavigateVerifyPos)
+                                    End If
+                                 End If
+                             Next
+                            ElseIf strNavigateValidatePos > 0 Then
+                                arrNavigateValidatePos = Split(LCase(strThenNavigateSatement), "validate ")
+                                For intNavigateValidatePos = 0 To UBound(arrNavigateValidatePos)
+                                    If arrNavigateValidatePos(intNavigateValidatePos) <> "" Then
+                                        If intNavigateValidatePos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Navigate" & " " & arrNavigateValidatePos(intNavigateValidatePos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Validate" & " " & arrNavigateValidatePos(intNavigateValidatePos)
+                                        End If
+                                    End If
+                                Next
+                            ElseIf strNavigateCheckPos > 0 Then
+                                arrNavigateCheckPos = Split(strThenNavigateSatement, "check ")
+                                For intNavigateCheckPos = 0 To UBound(arrNavigateCheckPos)
+                                    If arrNavigateCheckPos(intNavigateCheckPos) <> "" Then
+                                        If intNavigateCheckPos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Navigate" & " " & arrNavigateCheckPos(intNavigateCheckPos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Check" & " " & arrNavigateCheckPos(intNavigateCheckPos)
+                                        End If
+                                    End If
+                                Next
+                            Else
+                                Stream.WriteLine "And" & " " & "Navigate" & " " & arrThenNavigate(intThenNavigate)
+                            End If
+                        End If
+                    End If
+                Next
+        ElseIf strThenLaunch = True Then
+                arrThenLaunch = Split(LCase(BDDws.Cells(iRowCount + 1, 16).Value), "launch ")
+                For intThenLaunch = 0 To UBound(arrThenLaunch)
+                    If arrThenLaunch(intThenLaunch) <> "" Then
+                        If intThenLaunch = 0 Then
+                            Stream.WriteLine "Then" & " " & arrThenLaunch(intThenLaunch)
+                            strThenLaunchSatement = LCase(arrThenLaunch(intThenLaunch))
+                        Else
+                            Dim strLaunchVerifyPos, strLaunchValidatePos, strLaunchCheckPos
+                            Dim arrLaunchVerifyPos, arrLaunchValidatePos, arrLaunchCheckPos
+                            strLaunchVerifyPos = InStr(LCase(strThenLaunchSatement), "verify ")
+                            strLaunchValidatePos = InStr(LCase(strThenLaunchSatement), "validate ")
+                            strLaunchCheckPos = InStr(LCase(strThenLaunchSatement), "check ")
+                            If strLaunchVerifyPose = 0 Then
+                                arrLaunchVerifyPos = Split(strThenLaunchSatement, "verify ")
+                                For intLaunchVerifyPos = 0 To UBound(arrLaunchVerifyPos)
+                                    If arrLaunchVerifyPos(intLaunchVerifyPos) <> "" Then
+                                        If intLaunchVerifyPos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Launch" & " " & arrLaunchVerifyPos(intLaunchVerifyPos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Verify" & " " & arrLaunchVerifyPos(intLaunchVerifyPos)
+                                        End If
+                                     End If
+                                Next
+                             ElseIf strLaunchValidatePos > 0 Then
+                                arrLaunchValidatePos = Split(LCase(strThenLaunchSatement), "validate ")
+                                For intLaunchValidatePos = 0 To UBound(arrLaunchValidatePos)
+                                    If arrLaunchValidatePos(intLaunchValidatePos) <> "" Then
+                                        If intLaunchValidatePos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Launch" & "" & arrLaunchValidatePos(intLaunchValidatePos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Validate" & "" & arrLaunchValidatePos(intLaunchValidatePos)
+                                        End If
+                                      End If
+                                 Next
+                            ElseIf strLaunchCheckPos > 0 Then
+                                arrLaunchCheckPos = Split(strThenLaunchSatement, "check ")
+                                For intLaunchCheckPos = 0 To UBound(arrLaunchCheckPos)
+                                    If arrLaunchCheckPos(intLaunchCheckPos) <> "" Then
+                                        If intLaunchCheckPos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Launch" & " " & arrLaunchCheckPos(intLaunchCheckPos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Check" & "" & arrLaunchCheckPos(intLaunchCheckPos)
+                                        End If
+
+                                    End If
+                                Next
+                            Else
+                                Stream.WriteLine "And" & " " & "Launch" & " " & arrThenLaunch(intThenLaunch)
+                            End If
+                        End If
+                    End If
+                Next
+        ElseIf strThenLogin = True Then
+            arrThenLogin = Split(LCase(BDDws.Cells(iRowCount + 1, 16).Value), ".login ")
+            For intThenLogin = 0 To UBound(arrThenLogin)
+                If arrThenLogin(intThenLogin) <> "" Then
+                    If intThenLogin = 0 Then
+                        Stream.WriteLine "Then" & " " & arrThenLogin(intThenLogin)
+                    Else
+                        strThenLoginSatement = LCase(arrThenLogin(intThenLogin))
+                        Dim strLoginVerifyPos, strLoginValidatePos, strLoginCheckPos
+                        Dim arrLoginVerifyPos, arrLoginValidatePos, arrLoginCheckPos
+                        strLoginVerifyPos = InStr(LCase(strThenLoginSatement), "verify ")
+                        strLoginValidatePos = InStr(LCase(strThenLoginSatement), "validate ")
+                        strLoginCheckPos = InStr(LCase(strThenLoginSatement), "check ")
+                        If strLoginVerifyPos > 0 Then
+                            arrLoginVerifyPos = Split(strThenLoginSatement, "verify ")
+                                For intLoginVerifyPos = 0 To UBound(arrLoginVerifyPos)
+                                    If arrLoginVerifyPos(intLoginVerifyPos) <> "" Then
+                                        If intLoginVerifyPos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Login" & " " & arrLoginVerifyPos(intLoginVerifyPos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Verify" & " " & arrLoginVerifyPos(intLoginVerifyPos)
+                                        End If
+                                     End If
+                                 Next
+                        ElseIf strLoginValidatePos > 0 Then
+                            arrLoginValidatePos = Split(LCase(strThenLoginSatement), "validate ")
+                            For intLoginvalidatePos = 0 To UBound(arrLoginValidatePos)
+                                If arrLoginValidatePos(intLoginvalidatePos) <> "" Then
+                                    If intLoginvalidatePos = 0 Then
+                                        Stream.WriteLine "And" & " " & "Login" & " " & arrLoginValidatePos(intLoginvalidatePos)
+                                    Else
+                                        Stream.WriteLine "Then" & " " & "Validate" & " " & arrLoginValidatePos(intLoginvalidatePos)
+    
+                                    End If
+                                End If
+                            Next
+                        ElseIf strLoginCheckPos > 0 Then
+                            arrLoginCheckPos = Split(strThenLoginSatement, "check ")
+                                For intLoginCheckPos = 0 To UBound(arrLoginCheckPos)
+                                    If arrLoginCheckPos(intLoginCheckPos) <> "" Then
+                                        If intLoginCheckPos = 0 Then
+                                            Stream.WriteLine "And" & " " & "Login" & " " & arrLoginCheckPos(intLoginCheckPos)
+                                        Else
+                                            Stream.WriteLine "Then" & " " & "Check" & " " & arrLoginCheckPos(intLoginCheckPos)
+
+                                        End If
+                                     End If
+                                Next
+                        Else
+                            Stream.WriteLine "And" & " " & "Login" & " " & arrThenLogin(intThenLogin)
+                        End If
+                    End If
+                End If
+            Next
+        ElseIf ThenDotPos > 0 Then
+            arrThenDot = Split(LCase(BDDws.Cells(iRowCount + 1, 16).Value), ".")
+            For intThenDot = 0 To UBound(arrThenDot)
+                If arrThenDot(intThenDot) <> "" Then
+                    If intThenDot = 0 Then
+                        Stream.WriteLine "Then" & " " & arrThenDot(intThenDot)  'BDDws.Cells(iRowCount, 16).Value
+                    Else
+                        Stream.WriteLine "Then" & " " & arrThenDot(intThenDot)  'BDDs.Cells(iRowCount, 16).Value
+                    End If
+                End If
+            Next
+        ElseIf strSelect = True Then
+            arrFindSelect = Split(LCase(BDDws.Cells(iRowCount + 1, 15).Value), "select ")
+            For intStatSelect = 0 To UBound(arrFindSelect)
+                If arrFindSelect(intStatSelect) <> "" Then
+                    If intStatSelect = UBound(arrFindSelect) Then
+                        Stream.WriteLine "And" & " " & "Select" & " " & arrFindSelect(intStatSelect)
+                    Else
+                        Stream.WriteLine "And" & " " & arrFindSelect(intStatSelect)
+                    End If
+                End If
+            Next
+        Else
+            Stream.WriteLine "Then" & " " & BDDws.Cells(iRowCount + 1, 16).Value
+        End If
+'---------------------Then statement code-----------
+        'Else
+        'Entering examples keyword
+        strPattern = "(User | Login | Client)"
+        With objRegExp
+        .Global = True
+        .MultiLine = True
+        .IgnoreCase = True
+        .Pattern = strPattern
+        End With
+        If StepCount = MergeRowCount Then
+            If strScenarioParam <> "" Then 'objRegExp. Test (BDDws.Cells(iRowCount + 1, 15).Value) Then
+                Stream.WriteLine "Examples:" & " " & strScenarioParam
+                Stream.WriteLine "|" & strScenarioParam & "|"
+            Else
+                Stream.WriteLine "Examples:"
+            End If
+        End If
+            'End If
+            iRowCount = iRowCount + 1
+        End If
+    Next
+        Stream.Close
+Next
+    BDDwb.Close SaveChanges:=False
+    Label25.Caption = strTestcaseCount & " " & "Test Cases Converted to Feature file"
+    Label25.ForeColor = RGB(0, 176, 80)
+    Label25.Font.Bold = True
+End Sub
+
+Public Function Regularexp(Patter As String, StrText As String)
+    Dim objRegExp As New RegExp
+    With objRegExp
+    .Global = True
+    .MultiLine = True
+    .IgnoreCase = True
+    .Pattern = Patter
+    End With
+    If objRegExp.test(StrText) Then
+        Regularexp = True
+    Else
+        Regularexp = False
+    End If
+End Function
+
+Public Sub Exportdefects()
+    Dim objBugFactory, oBug, oBugConfig, oBuglist, oBugConfigList, oBugFactory
+    'Declare OTA API Objects Dim oBugFilter, strProjectFilter, strBugFilter, oBugConfigFilter
+    'Declare the test filter objects and variables
+    Dim oFolder 'Object for creating a new folder
+    Dim Excel, objwBook, objSheet
+    'Objects for creatig a new excel workbook and worksheet
+    Dim strCurrentTimeStamp
+    Dim DefectExcel As Workbook
+    i = 1
+    'TDC is the global TDconnection object
+    Set tdc = UserForm1.QCConnection
+    Set DefectExcel = Workbooks.Add  'CreateObject("Excel.Application")
+    Set objSheet = ActiveSheet 'ActiveWorkbook.Worksheets("TestCaseDetails")
+    objSheet.Name = "Defect Details"
+    objSheet.UsedRange.Delete
+    strCurrentTimeStamp = Format(Date, "ddmmyyyy") & Hour(Now()) & Minute(Now()) & Second(Now())
+    iRowCounter = 2
+    iColumnCounter = 1
+    'Fill the header
+    objSheet.Cells(1, 1).Value = "Defect ID": objSheet.Cells(1, 2).Value = "Status"
+    objSheet.Cells(1, 3).Value = "Summary"
+    objSheet.Cells(1, 4).Value = "Business Severity"
+    objSheet.Cells(1, 5).Value = "Business Priority"""
+    objSheet.Cells(1, 6).Value = "Assigned To"
+    objSheet.Cells(1, 7).Value = "Assigned_To_User_Name"
+    objSheet.Cells(1, 8).Value = "Detected in Deployment Event"
+    objSheet.Cells(1, 9).Value = "Planned Fix in Deployment Event"
+    objSheet.Cells(1, 10).Value = "AIT"
+    objSheet.Cells(1, 11).Value = "Detected By"
+    objSheet.Cells(1, 12).Value = "Detected_by_Full Name"
+    objSheet.Cells(1, 13).Value = "Deferred"
+    objSheet.Cells(1, 14).Value = "Project id (Nexus)"
+    objSheet.Cells(1, 15).Value = "ML Test Environment"
+    objSheet.Cells(1, 16).Value = "Detected on Date"
+    objSheet.Cells(1, 18).Value = "Sub-Component"
+    objSheet.Cells(1, 17).Value = "Component"
+    objSheet.Cells(1, 19).Value = "Root Cause"
+    objSheet.Cells(1, 20).Value = "Defect Category"
+    objSheet.Cells(1, 21).Value = "Defect Cause"
+    objSheet.Cells(1, 22).Value = "Identifier"
+    objSheet.Cells(1, 23).Value = "No. Of Blocked TCS"
+    objSheet.Cells(1, 24).Value = "Linked TestCase ID"
+    objSheet.Cells(1, 25).Value = "Linked TestCase Name"
+    If tdc.Connected = True Then
+        'Create an object of Defect Factory
+        Set objBugFactory = tdc.BugFactory
+        'Set a filter
+        Set oBugFilter = objBugFactory.Filter
+        Dim strAIT, strDetectedInDep, strPlannedFixinDep, strDefectStatus, strDefectSeverity
+        strAIT = TextBox1.Value
+        strDetectedInDep = TextBox2.Value 'E02.17.2023"
+        strPlannedFixinDep = TextBox3.Value 'E02.17.2023 'Getting all the selected value from defect status list box
+        Dim intSelectedItemCount
+        intSelectedItemCount = 0
+        For SelectCount = 0 To ListBox1.ListCount - 1
+            If ListBox1.Selected(SelectCount) = True Then
+                intSelectedItemCount = intSelectedItemCount + 1
+            End If
+        Next
+        Dim ItemCount: ItemCount = 0
+        For DefectStatus = 8 To ListBox1.ListCount - 1
+            If ListBox1.Selected(DefectStatus) = True Then
+            ItemCount ItemCount + 1
+                If ItemCount = intSelectedItemCount Then
+                    strDefectStatus = strDefectStatus & " " & Chr(34) & ListBox1.List(DefectStatus) & Chr(34)
+                Else
+                    strDefectStatus = strDefectStatus & " " & """" & ListBox1.List(DefectStatus) & "" & "AND"
+                End If
+            End If
+        Next
+        'Getting all the selected value from defect severity list box
+        Dim intSelectedSevCount
+        intSelectedSevCount = 0
+        For SevCount = 0 To ListBox2.ListCount - 1
+            If ListBox2.Selected(SevCount) = True Then
+                intSelectedSevCount = intSelectedSevCount + 1
+            End If
+        Next
+        'Forming filter values based on selection
+        Dim SeverityItemCount: SeverityItemCount = 0
+        For SeverityCount = 0 To ListBox2.ListCount - 1
+            If ListBox2.Selected(SeverityCount) = True Then
+                SeverityItemCount = SeverityItemCount + 1
+                If SeverityItemCount = intSelectedSevCount Then
+                    strSeverity = strSeverity & " " & Chr(34) & ListBox2.List(SeverityCount) & Chr(34)
+                Else
+                    strSeverity = strSeverity & " " & """" & ListBox2.List(SeverityCount) & """" & "OR"
+                End If
+            End If
+        Next
+        'Getting all the selected values from environment list box
+        Dim intEnvCount
+        intEnvCount = 0
+        For EnvCount = 0 To ListBox3.ListCount - 1
+            If ListBox3.Selected(EnvCount) = True Then
+                intEnyCount = intEnvCount + 1
+            End If
+        Next
+        'Forming filter values based on selection
+        Dim EnvItemCount: EnvItemCount = 0
+        For EnvironmentCount = 0 To ListBox3.ListCount - 1
+            If ListBox3.Selected(EnvironmentCount) = True Then
+                EnvItemCount = EnvItemCount + 1
+                If EnvItemCount = intEnvCount Then
+                    strEnv = strEnv & " " & Chr(34) & ListBox3.List(EnvironmentCount) & Chr(34)
+                Else
+                    strEnv = strEnv & " " & """" & ListBox3.List(EnvironmentCount) & """" & "OR"
+                End If
+            End If
+        Next
+        'Enclosing the search string within quotes
+        strBugFilter = Array(strAIT, strDetectedInDep, strPlannedFixinDep, strDefectStatus, strSeverity, strEnv)
+        'strDetectedinDepFilter = """"& strDetectedInDep & """"
+        oBugFilter.Filter("BG_USER_34") = """" & strBugFilter(e) & """" '- AIT Filter
+        oBugFilter.Filter("BG_USER_03") = """" & strBugFilter(1) & """"  '-Detected in Deployment Filter
+        oBugFilter.Filter("BG_USER_19") = """" & strBugFilter(2) & """" '-Planned fix in Deployment
+        oBugFilter.Filter("BG_STATUS") = strBugFilter(3) '-Defect Status filter
+        oBugFilter.Filter("BG_SEVERITY") = strBugFilter(4) 'Defect Severity Filter
+        oBugFilter.Filter("BG_USER_80") = strBugFilter(5) '-Environment
+        'Getting the list of defects matching teh filter criteria
+        Set oBuglist = objBugFactory.NewList(oBugFilter.Text)
+        'Get a list of all the defects
+        'Set oBuglist oBugFactory.NewList("")
+        intDefectCount = 0
+        For Each oStep In oBuglist
+            intDefectCount = oBuglist.Count
+            iRowCounter = iRowCounter + 1
+            objSheet.Cells(iRowCounter, 1).Value = oStep.Field("BG_BUG_ID") 'Defect id
+            objSheet.Cells(iRowCounter, 2).Value = oStep.Field("BG_STATUS") 'Status
+            objSheet.Cells(iRowCounter, 3).Value = oStep.Field("BG_SUMMARY") 'Summary
+            objSheet.Cells(iRowCounter, 4).Value = oStep.Field("BG_SEVERITY") 'Business severiry objSheet.Cells(iRowCounter, 5).Value = oStep.Field("BG_USER_45") 'Business Priority
+            objSheet.Cells(iRowCounter, 6).Value = oStep.Field("BG_RESPONSIBLE") 'Assigned to 'DetectedBy
+            objSheet.Cells(iRowCounter, 7).Value = oStep.Field("BG_USER_81")  'Assigned to user name
+            objSheet.Cells(iRowCounter, 8).Value = oStep.Field("BG_USER_03") 'Detected in Deployment Event objSheet.Cells(iRowCounter, 9).Value = oStep.Field("BG_USER_19") Planned Fix in Deployment Event
+            objSheet.Cells(iRowCounter, 10).Value = oStep.Field("BG_USER_34") 'AIT
+            objSheet.Cells(iRowCounter, 11).Value = oStep.Field("BG_DETECTED_BY") 'Detected By
+            objSheet.Cells(iRowCounter, 12).Value = oStep.Field("BG_USER_85") 'Detected By fullname
+            objSheet.Cells(iRowCounter, 13).Value = oStep.Field("BG_USER_12") 'Deferred objSheet.Cells(iRowCounter, 14).Value = oStep.Field("BG_USER_28") 'Project Nexus
+            objSheet.Cells(iRowCounter, 15).Value = oStep.Field("BG_USER_80") 'ML Test Environment
+            objSheet.Cells(iRowCounter, 16).Value = oStep.Field("BG_DETECTION_DATE") 'Detection on date
+            objSheet.Cells(iRowCounter, 17).Value = oStep.Field("BG_USER_87") 'Component
+            objSheet.Cells(iRowCounter, 18).Value = oStep.Field("BG_USER_88") 'Sub Component
+            objSheet.Cells(iRowCounter, 19).Value = oStep.Field("BG_USER_91") 'Root cause
+            objSheet.Cells(iRowCounter, 20).Value = oStep.Field("BG_USER_26") 'Defect Category
+            objSheet.Cells(iRowCounter, 21).Value = oStep.Field("BG_USER_27") 'Defect Cause objSheet.Cells(iRowCounter, 22).Value = oStep.Field("BG_USER_41") 'Identifier
+            'Get the linked factory object
+            Set LinkedTC = oStep.LinkFactory
+            Set ObjBugLinkList = LinkedTC.NewList("")
+            Dim strTestCaseName, intTestCaseID
+            Dim NoofTcs As Integer
+            intTestCaseID = ""
+            strTestCaseName = ""
+            NoofTcs = 0
+            If ObjBugLinkList.Count > 0 Then
+                For Each TestLink In ObjBugLinkList
+                    Set test = TestLink.TargetEntity
+                    NoofTcs = NoofTcs + 1
+                    intTestCaseID = intTestCaseID & test.ID & vbNewLine
+                    strTestCaseName = strTestCaseName & test.Name & vbNewLine
+                    objSheet.Cells(iRowCounter, 23).Value = NoofTcs
+                    objSheet.Cells(iRowCounter, 24).Value = intTestCaseID
+                    objSheet.Cells(iRowCounter, 25).Value = strTestCaseName
+                Next
+            End If
+            iRowCounter = iRowCounter + 1
+        Next
+        Set oStep = Nothing
+        Set oBuglist = Nothing
+        Set oBugFactory = Nothing
+        Set LinkedTC = Nothing
+        Set ObjBugLinkList = Nothing
+    End If
+    Strextn = ".xlsx"
+    StrDefectFileName = "Exported_Defects" & strCurrentTimeStamp & Strextn
+    StrDefectFilepath = TextBox4.Value & StrDefectFileName
+    ActiveWorkbook.SaveAs StrDefectFilepath 'FolderPath.Value & "Exported Test Cases TimeStamp" & ".xlsx"
+    Workbooks(StrDefectFileName).Close
+    Set objSheet = Nothing
+    Set DefectExcel = Nothing
+    'MsgBox intDefectCount & "" & "Defects are Exported"
+    Label25.Caption = intDefectCount & "" & "Defects are Exported"
+    Label25.ForeColor = RGB(0, 176, 80)
+    Label25.Font.Bold = True
+End Sub
+
